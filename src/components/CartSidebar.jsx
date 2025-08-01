@@ -465,12 +465,7 @@ const CartSidebar = ({
             <div className="bg-white px-6 py-4 border-b flex items-center justify-between gap-2">
               <div className="flex items-center gap-3">
                 <h2 className="text-xl font-semibold">ตะกร้าสินค้า</h2>
-                {hasDiscount && (
-                  <div className="bg-red-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
-                    <FaTags size={10} />
-                    <span>โปรโมชั่น</span>
-                  </div>
-                )}
+                
               </div>
               <div className="flex items-center gap-2">
                 <input
