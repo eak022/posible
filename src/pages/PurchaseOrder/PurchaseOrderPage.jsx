@@ -26,7 +26,7 @@ const PurchaseOrderPage = () => {
             const response = await purchaseOrderService.getAllPurchaseOrders();
             const orders = Array.isArray(response) ? response : response.purchaseOrders || [];
             
-            // ดึงข้อมูลซัพพลายเออร์สำหรับทุกใบสั่งซื้อ
+            // ดึงข้อมูลซัพพลายเออร์สำหรับทุกใบสั่งของ
             const ordersWithSupplier = await Promise.all(
                 orders.map(async (order) => {
                     if (order.supplierId) {
@@ -54,7 +54,7 @@ const PurchaseOrderPage = () => {
             setLoading(false);
         } catch (error) {
             console.error('Error fetching purchase orders:', error);
-            Swal.fire({ icon: 'error', title: 'ไม่สามารถโหลดข้อมูลใบสั่งซื้อได้' });
+            Swal.fire({ icon: 'error', title: 'ไม่สามารถโหลดข้อมูลใบสั่งของได้' });
             setPurchaseOrders([]);
             setLoading(false);
         }
@@ -64,7 +64,7 @@ const PurchaseOrderPage = () => {
         try {
             const result = await Swal.fire({
                 title: 'ยืนยันการรับสินค้า',
-                text: 'คุณต้องการยืนยันการรับสินค้าตามใบสั่งซื้อนี้ใช่หรือไม่?',
+                text: 'คุณต้องการยืนยันการรับสินค้าตามใบสั่งของนี้ใช่หรือไม่?',
                 icon: 'question',
                 showCancelButton: true,
                 confirmButtonColor: '#3085d6',
@@ -88,7 +88,7 @@ const PurchaseOrderPage = () => {
         try {
             const result = await Swal.fire({
                 title: 'ยืนยันการลบ',
-                text: 'คุณต้องการลบใบสั่งซื้อนี้ใช่หรือไม่?',
+                text: 'คุณต้องการลบใบสั่งของนี้ใช่หรือไม่?',
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#d33',
@@ -99,12 +99,12 @@ const PurchaseOrderPage = () => {
 
             if (result.isConfirmed) {
                 await purchaseOrderService.deletePurchaseOrder(id);
-                await Swal.fire('สำเร็จ', 'ลบใบสั่งซื้อเรียบร้อยแล้ว', 'success');
+                await Swal.fire('สำเร็จ', 'ลบใบสั่งของเรียบร้อยแล้ว', 'success');
                 fetchPurchaseOrders();
             }
         } catch (error) {
             console.error('Error deleting purchase order:', error);
-            Swal.fire('ข้อผิดพลาด', 'ไม่สามารถลบใบสั่งซื้อได้', 'error');
+            Swal.fire('ข้อผิดพลาด', 'ไม่สามารถลบใบสั่งของได้', 'error');
         }
     };
 
@@ -155,7 +155,7 @@ const PurchaseOrderPage = () => {
                         <input
                             type="text"
                             id="purchase-order-search-input"
-                            placeholder="ค้นหาตามเลขใบสั่งซื้อ หรือ ชื่อซัพพลายเออร์"
+                            placeholder="ค้นหาตามเลขใบสั่งของ หรือ ชื่อซัพพลายเออร์"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="search-input"
@@ -166,7 +166,7 @@ const PurchaseOrderPage = () => {
                             className="filter-button bg-purple-600 text-white hover:bg-purple-700"
                         >
                             <FaPlus />
-                            <span>สร้างใบสั่งซื้อ</span>
+                            <span>สร้างใบสั่งของ</span>
                         </button>
                     </div>
                 </div>
@@ -174,7 +174,7 @@ const PurchaseOrderPage = () => {
                 {/* Purchase Orders Table */}
                 <div className="bg-white rounded-xl shadow-lg overflow-hidden">
                     <div className="grid grid-cols-4 gap-4 p-4 bg-purple-500 text-white font-semibold">
-                        <div>เลขใบสั่งซื้อ</div>
+                        <div>เลขใบสั่งของ</div>
                         <div>ซัพพลายเออร์</div>
                         <div>จำนวนรายการสินค้า</div>
                         <div className="text-center">จัดการ</div>
@@ -195,7 +195,7 @@ const PurchaseOrderPage = () => {
 
                     {filteredPurchaseOrders.length === 0 && (
                         <div className="text-center py-8 text-gray-500">
-                            ไม่พบรายการใบสั่งซื้อ
+                            ไม่พบรายการใบสั่งของ
                         </div>
                     )}
                 </div>

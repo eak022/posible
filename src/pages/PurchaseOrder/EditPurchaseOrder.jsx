@@ -18,6 +18,7 @@ const EditPurchaseOrder = () => {
   const [selectedProducts, setSelectedProducts] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [purchaseOrder, setPurchaseOrder] = useState(null);
   const [formData, setFormData] = useState({
     supplierId: "",
     purchaseOrderDate: new Date().toISOString().split("T")[0],
@@ -49,8 +50,9 @@ const EditPurchaseOrder = () => {
 
       setProducts(formattedProducts);
       setSuppliers(formattedSuppliers);
+      setPurchaseOrder(purchaseOrderResponse);
 
-      // ตั้งค่าข้อมูลใบสั่งซื้อ
+      // ตั้งค่าข้อมูลใบสั่งของ
       if (purchaseOrderResponse.supplierId) {
         setFormData({
           supplierId:
@@ -253,7 +255,7 @@ const EditPurchaseOrder = () => {
       Swal.fire({
         icon: "success",
         title: "สำเร็จ",
-        text: "แก้ไขใบสั่งซื้อสำเร็จ",
+                    text: "แก้ไขใบสั่งของสำเร็จ",
       }).then(() => {
         navigate("/purchase-orders");
       });
@@ -262,7 +264,7 @@ const EditPurchaseOrder = () => {
       Swal.fire({
         icon: "error",
         title: "ข้อผิดพลาด",
-        text: error.response?.data?.message || "ไม่สามารถแก้ไขใบสั่งซื้อได้",
+                    text: error.response?.data?.message || "ไม่สามารถแก้ไขใบสั่งของได้",
       });
     }
     setLoading(false);
@@ -279,9 +281,9 @@ const EditPurchaseOrder = () => {
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-2xl font-bold text-gray-800">
-                แก้ไขใบสั่งซื้อ #{id}
+                แก้ไขใบสั่งของ #{purchaseOrder?.orderNumber || id}
               </h1>
-              <p className="text-gray-500 mt-1">แก้ไขข้อมูลใบสั่งซื้อ</p>
+                              <p className="text-gray-500 mt-1">แก้ไขข้อมูลใบสั่งของ</p>
             </div>
             <div className="text-right">
               <div className="text-sm text-gray-500">วันที่</div>
@@ -496,7 +498,7 @@ const EditPurchaseOrder = () => {
                   disabled={loading}
                   className="flex-1 p-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {loading ? "กำลังบันทึก..." : "บันทึกใบสั่งซื้อ"}
+                  {loading ? "กำลังบันทึก..." : "บันทึกใบสั่งของ"}
                 </button>
               </div>
             </div>

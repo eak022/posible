@@ -77,7 +77,7 @@ const PurchaseOrderDetail = ({ id, onClose }) => {
       const response = await purchaseOrderService.addAllStockFromOrder(id);
       console.log('Stock receive response:', response);
       
-      // อัปเดตข้อมูลใบสั่งซื้อ
+      // อัปเดตข้อมูลใบสั่งของ
       const updatedOrder = await purchaseOrderService.getPurchaseOrderById(id);
       setPurchaseOrder(updatedOrder);
       
@@ -146,6 +146,7 @@ const PurchaseOrderDetail = ({ id, onClose }) => {
                 <th style={{ border: '1px solid #888', padding: 6 }}>จำนวน</th>
                 <th style={{ border: '1px solid #888', padding: 6 }}>หน่วย</th>
                 <th style={{ border: '1px solid #888', padding: 6 }}>ราคา/หน่วย</th>
+                <th style={{ border: '1px solid #888', padding: 6 }}>รวม</th>
               </tr>
             </thead>
             <tbody>
@@ -159,6 +160,7 @@ const PurchaseOrderDetail = ({ id, onClose }) => {
                       : 'ชิ้น'}
                   </td>
                   <td style={{ border: '1px solid #888', padding: 6, textAlign: 'right' }}>{p.purchasePrice?.toLocaleString() || '-'}</td>
+                  <td style={{ border: '1px solid #888', padding: 6, textAlign: 'right' }}>{((p.purchasePrice || 0) * (p.quantity || 0)).toLocaleString() || '-'}</td>
                 </tr>
               ))}
               <tr className="bg-purple-100 font-semibold">
@@ -169,7 +171,7 @@ const PurchaseOrderDetail = ({ id, onClose }) => {
               </tr>
             </tbody>
           </table>
-          <div style={{ marginBottom: 12, fontWeight: 'bold' }}>หมายเหตุคำสั่งซื้อ: {purchaseOrder?.note || '-'}</div>
+          <div style={{ marginBottom: 12, fontWeight: 'bold' }}>หมายเหตุคำสั่งของ: {purchaseOrder?.note || '-'}</div>
           <div style={{ borderTop: '1px solid #888', marginTop: 24, paddingTop: 12, fontSize: 12, color: '#888' }}>พิมพ์โดยระบบ PossiblePOS</div>
         </div>
       )}
@@ -201,7 +203,7 @@ const PurchaseOrderDetail = ({ id, onClose }) => {
             {/* ส่วนบน */}
             <div className="grid grid-cols-3 gap-4 mb-6">
               <div>
-                <p className="text-gray-600">เลขใบสั่งซื้อ</p>
+                <p className="text-gray-600">เลขใบสั่งของ</p>
                 <p className="font-semibold">{purchaseOrder?.orderNumber || '-'}</p>
               </div>
               <div>
@@ -296,6 +298,7 @@ const PurchaseOrderDetail = ({ id, onClose }) => {
                     <th className="py-3 px-4 text-center">จำนวนสินค้า</th>
                     <th className="py-3 px-4 text-center">หน่วย</th>
                     <th className="py-3 px-4 text-right">ราคา/หน่วย</th>
+                    <th className="py-3 px-4 text-right">รวม</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -314,10 +317,11 @@ const PurchaseOrderDetail = ({ id, onClose }) => {
                           : 'ชิ้น'}
                       </td>
                       <td className="py-3 px-4 text-right">{product.purchasePrice?.toLocaleString()} บาท</td>
+                      <td className="py-3 px-4 text-right">{((product.purchasePrice || 0) * (product.quantity || 0)).toLocaleString()} บาท</td>
                     </tr>
                   ))}
                   <tr className="bg-purple-100 font-semibold">
-                    <td colSpan="4" className="py-3 px-4 text-right">รวมทั้งสิ้น</td>
+                    <td colSpan="5" className="py-3 px-4 text-right">รวมทั้งสิ้น</td>
                     <td className="py-3 px-4 text-right">
                       {purchaseOrder?.products?.reduce((sum, p) => sum + (p.purchasePrice || 0) * (p.quantity || 0), 0).toLocaleString()} บาท
                     </td>
@@ -328,7 +332,7 @@ const PurchaseOrderDetail = ({ id, onClose }) => {
 
             {/* หมายเหตุ */}
             <div className="mt-6">
-              <p className="text-gray-600">หมายเหตุคำสั่งซื้อ:</p>
+              <p className="text-gray-600">หมายเหตุคำสั่งของ:</p>
               <p>{purchaseOrder?.note || '-'}</p>
             </div>
           </div>

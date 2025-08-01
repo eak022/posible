@@ -190,7 +190,7 @@ const CreatePurchaseOrder = () => {
       Swal.fire({
         icon: "success",
         title: "สำเร็จ",
-        text: "สร้างใบสั่งซื้อสำเร็จ",
+                    text: "สร้างใบสั่งของสำเร็จ",
       }).then(() => {
         navigate("/purchase-orders");
       });
@@ -199,7 +199,7 @@ const CreatePurchaseOrder = () => {
       Swal.fire({
         icon: "error",
         title: "ข้อผิดพลาด",
-        text: error.response?.data?.message || "ไม่สามารถสร้างใบสั่งซื้อได้",
+                    text: error.response?.data?.message || "ไม่สามารถสร้างใบสั่งของได้",
       });
     }
     setLoading(false);
@@ -223,10 +223,10 @@ const CreatePurchaseOrder = () => {
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-2xl font-bold text-gray-800">
-                สร้างใบสั่งซื้อ
+                สร้างใบสั่งของ
               </h1>
               <p className="text-gray-500 mt-1">
-                กรอกข้อมูลเพื่อสร้างใบสั่งซื้อใหม่
+                                  กรอกข้อมูลเพื่อสร้างใบสั่งของใหม่
               </p>
             </div>
             <div className="text-right">
@@ -430,7 +430,7 @@ const CreatePurchaseOrder = () => {
                   disabled={loading}
                   className="flex-1 p-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {loading ? "กำลังบันทึก..." : "บันทึกใบสั่งซื้อ"}
+                  {loading ? "กำลังบันทึก..." : "บันทึกใบสั่งของ"}
                 </button>
               </div>
             </div>
