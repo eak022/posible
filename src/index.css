@@ -1,0 +1,108 @@
+@import url('https://fonts.googleapis.com/css2?family=Kanit:wght@400;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+    @apply overflow-hidden;
+    font-family: 'Kanit', sans-serif;
+}
+
+@layer components {
+    /* สไตล์สำหรับช่องค้นหาและปุ่มกรอง */
+    .search-filter-container {
+        @apply flex space-x-4;
+    }
+
+    .search-input {
+        @apply px-4 py-2 border rounded-lg w-[240px] h-[40px] text-sm;
+    }
+
+    .filter-button {
+        @apply px-4 py-2 bg-white text-black shadow-sm rounded-lg flex items-center space-x-2 w-[140px] h-[40px] text-xs whitespace-nowrap justify-center;
+    }
+
+    .filter-button svg {
+        @apply text-sm;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    input[type="date"],
+    input[type="password"],
+    input[type="email"],
+    textarea,
+    select {
+        @apply w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 bg-white text-black placeholder-gray-400;
+    }
+
+    input[type="text"]:focus,
+    input[type="number"]:focus,
+    input[type="date"]:focus,
+    input[type="password"]:focus,
+    input[type="email"]:focus,
+    textarea:focus,
+    select:focus {
+        @apply outline-none;
+    }
+
+    select {
+        @apply text-black;
+        color-scheme: light;
+    }
+
+    select option {
+        @apply text-black bg-white;
+        color-scheme: light;
+    }
+
+    select option:first-child {
+        @apply text-gray-500;
+    }
+
+    /* เพิ่มสไตล์สำหรับปฏิทิน */
+    input[type="date"]::-webkit-calendar-picker-indicator {
+        filter: invert(0);
+        cursor: pointer;
+    }
+
+    input[type="date"]::-webkit-datetime-edit {
+        @apply text-black;
+    }
+
+    input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+        @apply text-black;
+    }
+
+    input[type="date"]::-webkit-datetime-edit-text {
+        @apply text-black;
+    }
+
+    input[type="date"]::-webkit-datetime-edit-month-field {
+        @apply text-black;
+    }
+
+    input[type="date"]::-webkit-datetime-edit-day-field {
+        @apply text-black;
+    }
+
+    input[type="date"]::-webkit-datetime-edit-year-field {
+        @apply text-black;
+    }
+}
+
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+  #print-area, #print-area * {
+    visibility: visible !important;
+  }
+  #print-area {
+    position: absolute;
+    left: 0; top: 0; width: 100vw; background: #fff;
+    box-shadow: none;
+  }
+}
+
