@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Fragment, useCallback } from 'react';
+import React, { useState, useEffect, Fragment, useCallback, useContext } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { FaTimes, FaClipboardList, FaTags, FaExclamationTriangle } from 'react-icons/fa';
 import notificationService from '../services/notification.service';
@@ -7,6 +7,8 @@ import CreatePromotionModal from '../pages/Promotion/CreatePromotionModal';
 import orderService from '../services/order.service';
 import useAuthStore from '../store/useAuthStore';
 import Swal from 'sweetalert2';
+import { ProductContext } from '../context/ProductContext';
+import productService from '../services/product.service';
 
 const NotificationModal = ({ isOpen, onClose }) => {
     const [notifications, setNotifications] = useState({
@@ -28,6 +30,7 @@ const NotificationModal = ({ isOpen, onClose }) => {
 
     const navigate = useNavigate();
     const user = useAuthStore((state) => state.user);
+    const { setProducts } = useContext(ProductContext);
 
     useEffect(() => {
         if (isOpen) {
@@ -41,6 +44,18 @@ const NotificationModal = ({ isOpen, onClose }) => {
             return () => clearInterval(intervalId);
         }
     }, [isOpen]); // ดึงข้อมูลเมื่อ modal เปิด
+
+    // ฟังก์ชันอัปเดตข้อมูลสินค้าหลังจากตัดจำหน่าย
+    const updateProductData = async () => {
+        try {
+            const response = await productService.getAllProducts();
+            const products = response.data || response;
+            setProducts(products);
+            console.log('Product data updated after disposal');
+        } catch (error) {
+            console.error('Error updating product data:', error);
+        }
+    };
 
     const fetchNotifications = async () => {
         setLoading(true);
@@ -124,6 +139,10 @@ const NotificationModal = ({ isOpen, onClose }) => {
                         ]
                     };
                     await orderService.createDisposeOrder(disposeData);
+                    
+                    // อัปเดตข้อมูลสินค้าหลังจากตัดจำหน่าย
+                    await updateProductData();
+                    
                     Swal.fire('สำเร็จ', 'สร้างออเดอร์ตัดจำหน่ายสินค้าเรียบร้อย', 'success');
                     onClose();
                 } catch (err) {
@@ -131,7 +150,7 @@ const NotificationModal = ({ isOpen, onClose }) => {
                 }
             }
         }
-    }, [onClose, navigate, user]);
+    }, [onClose, navigate, user, updateProductData]);
 
     const handlePromotionModalClose = () => {
         setIsPromotionModalOpen(false);
