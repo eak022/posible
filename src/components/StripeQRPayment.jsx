@@ -30,7 +30,7 @@ const StripeQRPayment = ({ totalAmount, cartItems, onBack, onSubmit, onClose }) 
       // สร้างข้อมูล Order
       const orderData = StripeService.createOrderData(cartItems, totalAmount, user?.username || 'Guest');
       
-      // สร้าง Stripe Checkout Session
+      // สร้าง Stripe Payment Link
       const response = await StripeService.createPaymentIntent({
         amount: totalAmount,
         currency: 'thb',
@@ -40,14 +40,14 @@ const StripeQRPayment = ({ totalAmount, cartItems, onBack, onSubmit, onClose }) 
       });
 
       if (response.success) {
-        setCheckoutUrl(response.data.checkoutUrl);
+        setCheckoutUrl(response.data.qrCodeUrl);
         setPaymentStatus('pending');
         
         // เริ่มการตรวจสอบสถานะ
-        startStatusChecking(response.data.sessionId);
+        startStatusChecking(response.data.paymentLinkId);
         
         // แสดง QR Code
-        showQRCode(response.data.checkoutUrl);
+        showQRCode(response.data.qrCodeUrl);
       } else {
         throw new Error(response.message || 'เกิดข้อผิดพลาดในการสร้างการชำระเงิน');
       }
@@ -115,10 +115,10 @@ const StripeQRPayment = ({ totalAmount, cartItems, onBack, onSubmit, onClose }) 
   };
 
   // เริ่มการตรวจสอบสถานะ
-  const startStatusChecking = (sessionId) => {
+  const startStatusChecking = (paymentLinkId) => {
     const interval = setInterval(async () => {
       try {
-        const response = await StripeService.checkPaymentStatus(sessionId);
+        const response = await StripeService.checkPaymentStatus(paymentLinkId);
         
         if (response.success) {
           const status = response.data.status;
