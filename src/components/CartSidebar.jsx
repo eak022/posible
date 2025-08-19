@@ -25,6 +25,33 @@ const CartSidebar = ({
   const isProcessingScanRef = useRef(false);
   const [originalPrices, setOriginalPrices] = useState({}); // productId -> original unit price
 
+  // เพิ่มการเก็บข้อมูลตะกร้าใน localStorage เพื่อป้องกันการสูญเสียข้อมูลเมื่อรีเฟรชหน้า
+  useEffect(() => {
+    // เมื่อ cartItems เปลี่ยน ให้เก็บใน localStorage
+    if (cartItems && cartItems.length > 0) {
+      localStorage.setItem('cartItems', JSON.stringify(cartItems));
+    } else {
+      localStorage.removeItem('cartItems');
+    }
+  }, [cartItems]);
+
+  // โหลดข้อมูลตะกร้าจาก localStorage เมื่อ component mount
+  useEffect(() => {
+    const savedCartItems = localStorage.getItem('cartItems');
+    if (savedCartItems && (!cartItems || cartItems.length === 0)) {
+      try {
+        const parsedCartItems = JSON.parse(savedCartItems);
+        // ตรวจสอบว่าข้อมูลยังคงถูกต้อง
+        if (Array.isArray(parsedCartItems) && parsedCartItems.length > 0) {
+          setCartItems(parsedCartItems);
+        }
+      } catch (error) {
+        console.error('Error parsing saved cart items:', error);
+        localStorage.removeItem('cartItems');
+      }
+    }
+  }, []);
+
   // เตรียมราคาเดิมสำหรับแถวโปรโมชั่น (ดึงจาก product.sellingPricePerUnit)
   useEffect(() => {
     const loadOriginalPrices = async () => {
@@ -69,7 +96,10 @@ const CartSidebar = ({
     return Math.round(((originalPrice - discountedPrice) / originalPrice) * 100);
   };
 
-  const getItemPrice = (item) => item.price;
+  const getItemPrice = (item) => {
+    // คำนวณราคารวมของสินค้าแต่ละรายการ (ราคาต่อหน่วย × จำนวน)
+    return item.price * item.quantity;
+  };
 
   // ราคาเดิม: ถ้าเป็นโปรฯ ใช้ราคาหน่วยตามสินค้า (sellingPricePerUnit), ไม่ใช่ราคา promo
   const getOriginalPrice = (item) => {
@@ -83,14 +113,14 @@ const CartSidebar = ({
   const calculateTotal = () => {
     return cartItems.reduce((total, item) => {
       const itemPrice = getItemPrice(item);
-      return total + (itemPrice * item.quantity);
+      return total + itemPrice; // ไม่ต้องคูณด้วย quantity อีกครั้ง เพราะ getItemPrice คำนวณแล้ว
     }, 0);
   };
 
   const calculateOriginalTotal = () => {
     return cartItems.reduce((total, item) => {
       const originalPrice = getOriginalPrice(item);
-      return total + (originalPrice * item.quantity);
+      return total + (originalPrice * item.quantity); // ยังต้องคูณด้วย quantity เพราะ getOriginalPrice ยังไม่ได้คูณ
     }, 0);
   };
 
@@ -662,18 +692,24 @@ const CartSidebar = ({
 
       <PaymentPage
         isOpen={showPaymentMethods}
-        onClose={() => setShowPaymentMethods(false)}
+        onClose={() => {
+          // เมื่อปิดหน้าชำระเงิน ให้กลับไปยังตะกร้าสินค้าโดยไม่เคลียร์
+          setShowPaymentMethods(false);
+        }}
         cartItems={cartItems}
         onSubmit={(paymentMethod, cashReceived, paymentData) => {
-          // ✅ จัดการการเคลียร์ตะกร้าหลังจาก QR payment สำเร็จ
+          // ✅ จัดการการเคลียร์ตะกร้าหลังจาก QR payment สำเร็จเท่านั้น
           if (paymentMethod === 'banktransfer' && paymentData) {
             // ถ้าเป็น banktransfer (QR payment สำเร็จ) ให้เคลียร์ตะกร้าและปิดหน้า
             setCartItems([]); // เคลียร์ตะกร้า
             setIsCartOpen(false); // ปิดตะกร้า
             refetchData(); // รีเฟรชข้อมูล
-          } else {
-            // ถ้าเป็นวิธีอื่น ให้ส่งต่อไปยัง handleCreateOrder ปกติ
+          } else if (paymentMethod === 'Cash') {
+            // ถ้าเป็นเงินสด ให้ส่งต่อไปยัง handleCreateOrder ปกติ
             handleCreateOrder(paymentMethod, cashReceived);
+          } else {
+            // ❌ สำหรับ QR Code ไม่ต้องทำอะไร - ให้ Stripe webhook จัดการเอง
+            console.log('QR Payment initiated, waiting for Stripe webhook...');
           }
         }}
       />

@@ -78,7 +78,7 @@ const OrderSummary = ({ cartItems, onClose }) => {
   const calculateTotal = () => {
     return cartItems.reduce((total, item) => {
       const itemPrice = getItemPrice(item);
-      return total + (itemPrice * item.quantity);
+      return total + itemPrice; // ไม่ต้องคูณด้วย quantity อีกครั้ง เพราะ getItemPrice คำนวณแล้ว
     }, 0);
   };
 
@@ -366,27 +366,18 @@ const PaymentPage = ({ isOpen, onClose, cartItems, onSubmit }) => {
   ];
 
   const getItemPrice = (item) => {
-    // ตรวจสอบว่ามีโปรโมชั่นหรือไม่
-    const promotion = promotions[item._id];
-    if (promotion) {
-      // ถ้ามีโปรโมชั่น ใช้ราคาโปรโมชั่น
-      return promotion.discountedPrice;
-    }
-    
-    // ถ้าไม่มีโปรโมชั่น ใช้ราคาตามแพ็ค/ชิ้น
-    if (item.pack) {
-      // ถ้าเป็นแพ็ค ใช้ราคาแพ็ค
-      return item.sellingPricePerPack || item.price;
-    } else {
-      // ถ้าเป็นชิ้น ใช้ราคาต่อชิ้น
-      return item.sellingPricePerUnit || item.price;
-    }
+    // คำนวณราคารวมของสินค้าแต่ละรายการ (ราคาต่อหน่วย × จำนวน)
+    return item.price * item.quantity;
+  };
+
+  const calculateDiscountPercentage = (originalPrice, discountedPrice) => {
+    return Math.round(((originalPrice - discountedPrice) / originalPrice) * 100);
   };
 
   const calculateTotal = () => {
     return cartItems.reduce((total, item) => {
       const itemPrice = getItemPrice(item);
-      return total + (itemPrice * item.quantity);
+      return total + itemPrice; // ไม่ต้องคูณด้วย quantity อีกครั้ง เพราะ getItemPrice คำนวณแล้ว
     }, 0);
   };
 
@@ -497,19 +488,25 @@ const PaymentPage = ({ isOpen, onClose, cartItems, onSubmit }) => {
                 <StripeQRPayment
                   totalAmount={calculateTotal()}
                   cartItems={cartItems}
-                  onBack={() => setSelectedMethod(null)}
+                  onBack={() => {
+                    // เมื่อกลับจาก QR Payment ให้กลับไปยังหน้าเลือกวิธีการชำระเงินโดยไม่เคลียร์ตะกร้า
+                    setSelectedMethod(null);
+                  }}
                   onSubmit={(paymentMethod, cashReceived, paymentData) => {
-                    // ✅ จัดการการเคลียร์ตะกร้าหลังจาก QR payment สำเร็จ
+                    // ✅ จัดการการเคลียร์ตะกร้าหลังจาก QR payment สำเร็จเท่านั้น
                     if (paymentMethod === 'banktransfer' && paymentData) {
                       // ถ้าเป็น banktransfer (QR payment สำเร็จ) ให้เคลียร์ตะกร้าและปิดหน้า
                       onSubmit(paymentMethod, cashReceived, paymentData);
                       onClose();
                     } else {
-                      // ถ้าเป็นวิธีอื่น ให้ส่งต่อไปยัง onSubmit ปกติ
-                      onSubmit(paymentMethod, cashReceived, paymentData);
+                      // ❌ ไม่ส่งข้อมูลไปยัง onSubmit อีก - ให้ Stripe webhook จัดการเอง
+                      console.log('QR Payment initiated, waiting for Stripe webhook...');
                     }
                   }}
-                  onClose={onClose}
+                  onClose={() => {
+                    // เมื่อปิด QR Payment ให้กลับไปยังหน้าเลือกวิธีการชำระเงินโดยไม่เคลียร์ตะกร้า
+                    setSelectedMethod(null);
+                  }}
                 />
               ) : null}
             </div>

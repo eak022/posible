@@ -4,7 +4,10 @@ class StripeService {
   // สร้างการชำระเงินใหม่ (Payment Intent)
   static async createPaymentIntent(paymentData) {
     try {
-      const response = await api.post('/stripe/create-payment-intent', paymentData);
+      // ❌ ไม่ส่ง orderId ที่ไม่ถูกต้อง - ระบบจะสร้างเอง
+      const { orderId, ...cleanPaymentData } = paymentData;
+      
+      const response = await api.post('/stripe/create-payment-intent', cleanPaymentData);
       return response.data;
     } catch (error) {
       console.error('Create payment intent error:', error);
@@ -34,37 +37,13 @@ class StripeService {
     }
   }
 
-  // สร้างข้อมูล Order สำหรับ Stripe
+  // ✅ สร้างข้อมูล Order สำหรับ Stripe - แก้ไขให้ส่งข้อมูลที่กระชับ
   static createOrderData(cartItems, totalAmount, userName) {
-    const products = cartItems.map(item => ({
-      productId: item._id,
-      image: item.image || item.productImage,
-      name: item.productName || item.name, // ใช้ productName เป็นหลัก
-      quantity: item.quantity,
-      purchasePrice: item.purchasePrice || 0,
-      sellingPricePerUnit: item.price,
-      pack: item.pack || false,
-      packSize: item.packSize,
-      lotsUsed: item.lotsUsed || [],
-      originalPrice: item.originalPrice || item.price,
-      discountAmount: item.discountAmount || 0,
-      promotionId: item.promotionId || null, // เพิ่ม promotionId
-      // เพิ่มข้อมูลที่จำเป็นสำหรับ backend
-      productName: item.productName || item.name // เพิ่ม productName เพื่อความชัดเจน
-    }));
-
+    // ✅ ส่งเฉพาะข้อมูลที่จำเป็น เพื่อไม่ให้ metadata เกิน 500 ตัวอักษร
     return {
       userName: userName,
-      products: products,
-      subtotal: totalAmount,
+      cartItems: cartItems.length, // ส่งจำนวนรายการแทนข้อมูลทั้งหมด
       total: totalAmount,
-      promotionId: cartItems
-        .filter(item => item.promotionId)
-        .map(item => ({
-          productId: item.promotionId,
-          promotionName: item.promotionName || 'โปรโมชั่น',
-          discountedPrice: item.price
-        })),
       orderDate: new Date()
     };
   }
