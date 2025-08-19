@@ -52,7 +52,16 @@ const OrderSummary = ({ cartItems, onClose }) => {
     }).format(price);
   };
 
-  const getItemPrice = (item) => item.price;
+  const getItemPrice = (item) => {
+    // ใช้ราคาจาก item โดยตรง (ไม่ต้องใช้ promotions)
+    if (item.pack) {
+      // ถ้าเป็นแพ็ค ใช้ราคาแพ็ค
+      return item.sellingPricePerPack || item.price;
+    } else {
+      // ถ้าเป็นชิ้น ใช้ราคาต่อชิ้น
+      return item.sellingPricePerUnit || item.price;
+    }
+  };
 
   const getOriginalPrice = (item) => {
     if (item.promotionId) {
@@ -342,9 +351,10 @@ const PaymentPage = ({ isOpen, onClose, cartItems, onSubmit }) => {
     {
       id: "Stripe",
       name: "ชำระด้วย QR Code",
-      description: "สแกน QR Code ด้วยแอปธนาคาร",
+      description: "สแกน QR Code ด้วยแอปธนาคาร (ขั้นต่ำ 10 บาท)",
       icon: FaQrcode,
       color: "purple",
+      minAmount: 10, // เพิ่มขั้นต่ำ
     },
     {
       id: "BankTransfer",
@@ -356,11 +366,21 @@ const PaymentPage = ({ isOpen, onClose, cartItems, onSubmit }) => {
   ];
 
   const getItemPrice = (item) => {
+    // ตรวจสอบว่ามีโปรโมชั่นหรือไม่
     const promotion = promotions[item._id];
     if (promotion) {
-      return item.pack ? promotion.discountedPrice : promotion.discountedPrice;
+      // ถ้ามีโปรโมชั่น ใช้ราคาโปรโมชั่น
+      return promotion.discountedPrice;
     }
-    return item.pack ? item.sellingPricePerPack : item.sellingPricePerUnit;
+    
+    // ถ้าไม่มีโปรโมชั่น ใช้ราคาตามแพ็ค/ชิ้น
+    if (item.pack) {
+      // ถ้าเป็นแพ็ค ใช้ราคาแพ็ค
+      return item.sellingPricePerPack || item.price;
+    } else {
+      // ถ้าเป็นชิ้น ใช้ราคาต่อชิ้น
+      return item.sellingPricePerUnit || item.price;
+    }
   };
 
   const calculateTotal = () => {
@@ -419,24 +439,52 @@ const PaymentPage = ({ isOpen, onClose, cartItems, onSubmit }) => {
                     </button>
 
                     {/* Other Payment Methods */}
-                    {paymentMethods.map((method) => (
-                      <button
-                        key={method.id}
-                        onClick={() => handleMethodSelect(method.id)}
-                        className="group relative bg-white p-6 rounded-2xl border-2 border-gray-200 hover:border-gray-300 hover:shadow-lg transition-all duration-300 text-left"
-                      >
-                        <div className={`text-${method.color}-500 mb-4`}>
-                          <method.icon size={32} />
-                        </div>
-                        <h3 className="text-lg font-semibold mb-1">
-                          {method.name}
-                        </h3>
-                        <p className="text-gray-500 text-sm">
-                          {method.description}
-                        </p>
-                        <div className="absolute inset-0 border-2 border-green-500 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </button>
-                    ))}
+                    {paymentMethods.map((method) => {
+                      const isDisabled = method.minAmount && calculateTotal() < method.minAmount;
+                      const isQRMethod = method.id === "Stripe";
+                      
+                      return (
+                        <button
+                          key={method.id}
+                          onClick={() => !isDisabled && handleMethodSelect(method.id)}
+                          disabled={isDisabled}
+                          className={`group relative p-6 rounded-2xl border-2 transition-all duration-300 text-left ${
+                            isDisabled 
+                              ? 'bg-gray-100 border-gray-200 cursor-not-allowed opacity-60' 
+                              : 'bg-white border-gray-200 hover:border-gray-300 hover:shadow-lg'
+                          }`}
+                        >
+                          <div className={`mb-4 ${isDisabled ? 'text-gray-400' : `text-${method.color}-500`}`}>
+                            <method.icon size={32} />
+                          </div>
+                          <h3 className={`text-lg font-semibold mb-1 ${isDisabled ? 'text-gray-500' : ''}`}>
+                            {method.name}
+                          </h3>
+                          <p className={`text-sm ${isDisabled ? 'text-gray-400' : 'text-gray-500'}`}>
+                            {method.description}
+                          </p>
+                          
+                          {/* แสดงข้อความแจ้งเตือนสำหรับ QR Code ที่ถูกปิด */}
+                          {isDisabled && isQRMethod && (
+                            <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
+                              <p className="text-xs text-yellow-700 font-medium">
+                                ยอดรวมต้องไม่ต่ำกว่า ฿{method.minAmount} เพื่อใช้ QR Code
+                              </p>
+                              <p className="text-xs text-yellow-600 mt-1">
+                                ปัจจุบัน: {new Intl.NumberFormat("th-TH", {
+                                  style: "currency",
+                                  currency: "THB",
+                                }).format(calculateTotal())}
+                              </p>
+                            </div>
+                          )}
+                          
+                          {!isDisabled && (
+                            <div className="absolute inset-0 border-2 border-green-500 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity" />
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 </>
               ) : selectedMethod === "Cash" ? (

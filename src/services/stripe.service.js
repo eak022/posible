@@ -1,7 +1,7 @@
 import api from './api';
 
 class StripeService {
-  // สร้างการชำระเงินใหม่ (Payment Link)
+  // สร้างการชำระเงินใหม่ (Payment Intent)
   static async createPaymentIntent(paymentData) {
     try {
       const response = await api.post('/stripe/create-payment-intent', paymentData);
@@ -12,10 +12,10 @@ class StripeService {
     }
   }
 
-  // ตรวจสอบสถานะการชำระเงินจาก Payment Link
-  static async checkPaymentStatus(paymentLinkId) {
+  // ตรวจสอบสถานะการชำระเงินจาก Payment Intent
+  static async checkPaymentStatus(paymentIntentId) {
     try {
-      const response = await api.get(`/stripe/payment-status/${paymentLinkId}`);
+      const response = await api.get(`/stripe/payment-status/${paymentIntentId}`);
       return response.data;
     } catch (error) {
       console.error('Check payment status error:', error);
@@ -24,9 +24,9 @@ class StripeService {
   }
 
   // ยกเลิกการชำระเงิน
-  static async cancelPayment(paymentLinkId) {
+  static async cancelPayment(paymentIntentId) {
     try {
-      const response = await api.post(`/stripe/cancel-payment/${paymentLinkId}`, {});
+      const response = await api.post(`/stripe/cancel-payment/${paymentIntentId}`, {});
       return response.data;
     } catch (error) {
       console.error('Cancel payment error:', error);
