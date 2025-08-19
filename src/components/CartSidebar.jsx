@@ -664,7 +664,18 @@ const CartSidebar = ({
         isOpen={showPaymentMethods}
         onClose={() => setShowPaymentMethods(false)}
         cartItems={cartItems}
-        onSubmit={handleCreateOrder}
+        onSubmit={(paymentMethod, cashReceived, paymentData) => {
+          // ✅ จัดการการเคลียร์ตะกร้าหลังจาก QR payment สำเร็จ
+          if (paymentMethod === 'banktransfer' && paymentData) {
+            // ถ้าเป็น banktransfer (QR payment สำเร็จ) ให้เคลียร์ตะกร้าและปิดหน้า
+            setCartItems([]); // เคลียร์ตะกร้า
+            setIsCartOpen(false); // ปิดตะกร้า
+            refetchData(); // รีเฟรชข้อมูล
+          } else {
+            // ถ้าเป็นวิธีอื่น ให้ส่งต่อไปยัง handleCreateOrder ปกติ
+            handleCreateOrder(paymentMethod, cashReceived);
+          }
+        }}
       />
     </>
   );

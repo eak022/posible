@@ -23,39 +23,21 @@ const StripeQRPayment = ({ totalAmount, cartItems, onBack, onSubmit, onClose }) 
     }).format(price);
   };
 
-  // ดึง QR Code จาก PromptPay.io โดยตรง
-  const generateQRCode = async (url) => {
+  // ใช้ QR ของ Stripe โดยตรง - ไม่ต้องใช้ไลบรารี
+  const generateQRCode = async (qrUrl) => {
     try {
       // ตรวจสอบว่า URL ถูกต้องหรือไม่
-      if (!url || !url.startsWith('https://')) {
+      if (!qrUrl || !qrUrl.startsWith('https://')) {
         throw new Error('URL ไม่ถูกต้อง');
       }
 
-      // ดึงรูป QR Code จาก PromptPay.io โดยตรง
-      // ใช้ URL ที่ได้จาก backend ที่มี format: https://promptpay.io/merchantId/amount
-      setQrCodeDataUrl(url);
+      // ใช้ QR ของ Stripe โดยตรง - แค่ set URL
+      setQrCodeDataUrl(qrUrl);
+      console.log('Using Stripe QR Code:', qrUrl);
       
     } catch (error) {
-      // Fallback: ใช้ external service อื่นๆ ถ้า PromptPay.io ไม่ทำงาน
-      try {
-        const fallbackUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(url)}&margin=3&ecc=H`;
-        setQrCodeDataUrl(fallbackUrl);
-      } catch (fallbackError) {
-        // Fallback ที่ 2: ใช้ Google Charts API
-        try {
-          const googleQRUrl = `https://chart.googleapis.com/chart?cht=qr&chs=250x250&chl=${encodeURIComponent(url)}&choe=UTF-8&chld=H`;
-          setQrCodeDataUrl(googleQRUrl);
-        } catch (googleError) {
-          // Fallback ที่ 3: ใช้ QR Server ที่เสถียรกว่า
-          try {
-            const stableQRUrl = `https://qr.ae/api/v1/create?text=${encodeURIComponent(url)}&size=250&margin=3&ecc=H`;
-            setQrCodeDataUrl(stableQRUrl);
-          } catch (stableError) {
-            // แสดงข้อความ error ให้ user ทราบ
-            setError('ไม่สามารถดึง QR Code ได้ กรุณาลองใหม่อีกครั้ง');
-          }
-        }
-      }
+      console.error('QR Code generation error:', error);
+      setError('ไม่สามารถดึง QR Code ได้ กรุณาลองใหม่อีกครั้ง');
     }
   };
 
@@ -71,7 +53,7 @@ const StripeQRPayment = ({ totalAmount, cartItems, onBack, onSubmit, onClose }) 
       // สร้างข้อมูล Order
       const orderData = StripeService.createOrderData(cartItems, totalAmount, user?.username || 'Guest');
       
-      // สร้าง Stripe Payment Link
+      // สร้าง Stripe Payment Intent
       const response = await StripeService.createPaymentIntent({
         amount: totalAmount,
         currency: 'thb',
@@ -94,13 +76,13 @@ const StripeQRPayment = ({ totalAmount, cartItems, onBack, onSubmit, onClose }) 
         
         // ตรวจสอบว่า URL ที่ได้จาก Stripe ถูกต้องหรือไม่
         if (!qrCodeUrl || !qrCodeUrl.startsWith('https://')) {
-          throw new Error('URL การชำระเงินไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง');
+          throw new Error('ไม่สามารถสร้าง QR Code ได้ กรุณาลองใหม่อีกครั้ง');
         }
 
         setCheckoutUrl(qrCodeUrl);
         setPaymentStatus('pending');
         
-        // สร้าง QR Code จาก URL ที่ได้จาก Stripe (PromptPay โดยตรง)
+        // สร้าง QR Code จาก URL ที่ได้จาก Stripe
         await generateQRCode(qrCodeUrl);
         
         // เริ่มการตรวจสอบสถานะ
@@ -219,8 +201,11 @@ const StripeQRPayment = ({ totalAmount, cartItems, onBack, onSubmit, onClose }) 
       timer: 3000,
       timerProgressBar: true
     }).then(() => {
-      // ส่งข้อมูลกลับไปยัง parent component - เปลี่ยนจาก 'Stripe' เป็น 'banktransfer'
-      onSubmit('banktransfer', 0, paymentData);
+      // ✅ เคลียร์ตะกร้าหลังจากชำระเงินสำเร็จ
+      if (onSubmit) {
+        // ส่งข้อมูลกลับไปยัง parent component - เปลี่ยนจาก 'Stripe' เป็น 'banktransfer'
+        onSubmit('banktransfer', 0, paymentData);
+      }
     });
   };
 
@@ -397,24 +382,29 @@ const StripeQRPayment = ({ totalAmount, cartItems, onBack, onSubmit, onClose }) 
           <div className="mb-4">
             <img 
               src={qrCodeDataUrl}
-              alt="QR Code จาก PromptPay.io"
-              className="mx-auto border-2 border-gray-200 rounded-lg"
+              alt="QR Code จาก Stripe"
+              className="mx-auto w-64 h-64 object-contain border-2 border-gray-200 rounded-lg"
+              style={{ maxWidth: '256px', maxHeight: '256px' }}
               onError={(e) => {
                 setError('QR Code ไม่สามารถแสดงผลได้ กรุณาลองใหม่อีกครั้ง');
               }}
             />
           </div>
           
-          <p className="text-sm text-gray-600 mb-2">สแกนด้วยแอปธนาคารของคุณ</p>
+          <div className="text-sm text-gray-600 space-y-2 mb-4">
+            <p>🔄 สแกน QR Code ด้วยแอปธนาคาร</p>
+            <p>💳 เลือก PromptPay หรือ Mobile Banking</p>
+            <p>✅ QR Code จาก Stripe - ระบบจะรับการแจ้งเตือนอัตโนมัติ</p>
+          </div>
+          
           <p className="text-lg font-semibold text-green-600 mb-4">{formatPrice(totalAmount)}</p>
-          <p className="text-xs text-gray-500 mb-4">หลังจากสแกนแล้ว สามารถกดปุ่ม "ตรวจสอบสถานะ" เพื่อดูผลการชำระเงิน</p>
           
           {/* แสดงข้อมูลการทำงานของระบบ */}
-          <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
-            <p className="text-xs text-gray-600 font-medium mb-2">ระบบจะทำงานอัตโนมัติ:</p>
-            <div className="space-y-1 text-xs text-gray-500">
+          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <p className="text-xs text-green-700 font-medium mb-2">ระบบ Stripe จะทำงานอัตโนมัติ:</p>
+            <div className="space-y-1 text-xs text-green-600">
               <p>🔄 ตรวจสอบสถานะทุก 5 วินาที</p>
-              <p>✅ เมื่อสำเร็จ: แจ้งเตือน + สร้างออร์เดอร์ + เคลียร์ตะกร้า + กลับหน้าขาย</p>
+              <p>✅ เมื่อสำเร็จ: Stripe ส่ง webhook → แจ้งเตือน + สร้างออร์เดอร์ + เคลียร์ตะกร้า</p>
               <p>📱 หรือกดปุ่ม "ตรวจสอบสถานะ" เพื่อตรวจสอบทันที</p>
             </div>
           </div>

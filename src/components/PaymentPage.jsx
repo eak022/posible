@@ -498,7 +498,17 @@ const PaymentPage = ({ isOpen, onClose, cartItems, onSubmit }) => {
                   totalAmount={calculateTotal()}
                   cartItems={cartItems}
                   onBack={() => setSelectedMethod(null)}
-                  onSubmit={onSubmit}
+                  onSubmit={(paymentMethod, cashReceived, paymentData) => {
+                    // ✅ จัดการการเคลียร์ตะกร้าหลังจาก QR payment สำเร็จ
+                    if (paymentMethod === 'banktransfer' && paymentData) {
+                      // ถ้าเป็น banktransfer (QR payment สำเร็จ) ให้เคลียร์ตะกร้าและปิดหน้า
+                      onSubmit(paymentMethod, cashReceived, paymentData);
+                      onClose();
+                    } else {
+                      // ถ้าเป็นวิธีอื่น ให้ส่งต่อไปยัง onSubmit ปกติ
+                      onSubmit(paymentMethod, cashReceived, paymentData);
+                    }
+                  }}
                   onClose={onClose}
                 />
               ) : null}

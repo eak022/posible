@@ -38,8 +38,8 @@ class StripeService {
   static createOrderData(cartItems, totalAmount, userName) {
     const products = cartItems.map(item => ({
       productId: item._id,
-      image: item.productImage,
-      productName: item.productName,
+      image: item.image || item.productImage,
+      name: item.productName || item.name, // ใช้ name แทน productName
       quantity: item.quantity,
       purchasePrice: item.purchasePrice || 0,
       sellingPricePerUnit: item.price,
@@ -47,7 +47,8 @@ class StripeService {
       packSize: item.packSize,
       lotsUsed: item.lotsUsed || [],
       originalPrice: item.originalPrice || item.price,
-      discountAmount: item.discountAmount || 0
+      discountAmount: item.discountAmount || 0,
+      promotionId: item.promotionId || null // เพิ่ม promotionId
     }));
 
     return {
