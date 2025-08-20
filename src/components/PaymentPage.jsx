@@ -355,14 +355,7 @@ const PaymentPage = ({ isOpen, onClose, cartItems, onSubmit }) => {
       icon: FaQrcode,
       color: "purple",
       minAmount: 10, // เพิ่มขั้นต่ำ
-    },
-    {
-      id: "BankTransfer",
-      name: "โอนเงินผ่านธนาคาร",
-      description: "โอนเงินผ่านบัญชีธนาคาร",
-      icon: FaCreditCard,
-      color: "blue",
-    },
+    }
   ];
 
   const getItemPrice = (item) => {
