@@ -9,7 +9,7 @@ const CategoryList = ({ category, onEdit, onDelete, index }) => {
       <div>{category.categoryName}</div>
       <div className="flex justify-center gap-2">
         <button
-          id={`edit-category-button-${category._id}`} //เพิ่ม id ตาม category._id
+          id={`edit-category-button-${index}`}
           onClick={() => onEdit(category)}
           className="p-2 bg-yellow-100 text-yellow-600 rounded-lg hover:bg-yellow-200"
           title="แก้ไขหมวดหมู่"
@@ -17,7 +17,7 @@ const CategoryList = ({ category, onEdit, onDelete, index }) => {
           <FaEdit />
         </button>
         <button
-          id={`delete-category-button-${category._id}`} //เพิ่ม id ตาม category._id
+          id={`delete-category-button-${index}`}
           onClick={() => onDelete(category._id)}
           className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200"
           title="ลบ"

@@ -2,6 +2,10 @@ import React, { useState , useEffect} from "react";
 import { FaChartLine, FaBox, FaHistory, FaCogs, FaArrowUp, FaArrowDown, FaShoppingCart, FaDollarSign, FaMoneyBillWave, FaFileInvoiceDollar } from "react-icons/fa";
 import { orderService } from "../../services";
 import { generateOrderNumber } from "../../utils/orderUtils";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+import { th } from "date-fns/locale";
+import { useNavigate } from "react-router-dom";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -35,9 +39,11 @@ const DashboardPage = () => {
   const [loading, setLoading] = useState(true);
   const [selectedRange, setSelectedRange] = useState(7);
   const [showBest, setShowBest] = useState(true);
-  const [selectedDate, setSelectedDate] = useState("");
+  const [dateRange, setDateRange] = useState([null, null]);
+  const [startDate, endDate] = dateRange;
   const { products: allProducts } = useProduct();
   const { purchaseOrders, setPurchaseOrders } = usePurchaseOrder();
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchOrders();
@@ -54,16 +60,31 @@ const DashboardPage = () => {
     }
   };
 
-  // ฟังก์ชันช่วยเช็คว่าวันที่ตรงกับ selectedDate หรือไม่
-  const isSelectedDay = (date) => {
-    if (!selectedDate) return true;
-    const d = new Date(date);
-    return d.toISOString().slice(0, 10) === selectedDate;
+  // ฟังก์ชันช่วยเช็คว่าวันที่อยู่ในช่วงที่เลือกหรือไม่
+  const isInSelectedRange = (date) => {
+    if (!startDate && !endDate) return true;
+    
+    const orderDate = new Date(date);
+    const start = startDate;
+    const end = endDate;
+    
+    if (start && end) {
+      // มีทั้งวันที่เริ่มต้นและสิ้นสุด
+      return orderDate >= start && orderDate <= end;
+    } else if (start) {
+      // มีแค่วันที่เริ่มต้น
+      return orderDate >= start;
+    } else if (end) {
+      // มีแค่วันที่สิ้นสุด
+      return orderDate <= end;
+    }
+    
+    return true;
   };
 
-  // Filter orders และ purchaseOrders ตาม selectedDate
-  const filteredOrders = orders.filter(order => isSelectedDay(order.orderDate) && order.orderStatus === "ขายสำเร็จ");
-  const filteredPurchaseOrders = purchaseOrders.filter(po => isSelectedDay(po.purchaseOrderDate) && po.status === "completed");
+  // Filter orders และ purchaseOrders ตามช่วงวันที่ที่เลือก
+  const filteredOrders = orders.filter(order => isInSelectedRange(order.orderDate) && order.orderStatus === "ขายสำเร็จ");
+  const filteredPurchaseOrders = purchaseOrders.filter(po => isInSelectedRange(po.purchaseOrderDate) && po.status === "completed");
 
   // คำนวณสถิติต่างๆ (ใช้ filteredOrders/filteredPurchaseOrders แทน)
   const totalSales = filteredOrders.length;
@@ -175,14 +196,74 @@ const DashboardPage = () => {
     return dates;
   };
 
-  // ฟังก์ชันสร้าง data n วันล่าสุด (ถ้าเลือกวันจะโชว์เฉพาะวันนั้น)
+  // ฟังก์ชันสร้าง data n วันล่าสุด (ถ้าเลือกช่วงวันที่จะโชว์เฉพาะช่วงนั้น)
   const getDailySales = (n) => {
-    if (selectedDate) {
-      // filter orders เฉพาะวันเดียว
-      const dayOrders = orders.filter(order => {
-        return isSelectedDay(order.orderDate) && order.orderStatus === "ขายสำเร็จ";
+    if (startDate && endDate) {
+      // filter orders เฉพาะช่วงวันที่
+      const start = startDate;
+      const end = endDate;
+      const days = [];
+      const sales = [];
+      
+      // สร้าง array ของวันที่ในช่วงที่เลือก
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        days.push(new Date(d));
+      }
+      
+      // คำนวณยอดขายแต่ละวัน
+      days.forEach(day => {
+        const dayOrders = orders.filter(order => {
+          const orderDate = new Date(order.orderDate);
+          return orderDate.toDateString() === day.toDateString() && order.orderStatus === "ขายสำเร็จ";
+        });
+        sales.push(dayOrders.reduce((sum, order) => sum + (order.total || 0), 0));
       });
-      return [dayOrders.reduce((sum, order) => sum + (order.total || 0), 0)];
+      
+      return sales;
+    } else if (startDate || endDate) {
+      // มีแค่วันใดวันหนึ่ง
+      if (startDate) {
+        // มีแค่วันเริ่มต้น - แสดงข้อมูลจากวันนั้นไปข้างหน้า
+        const start = startDate;
+        const end = new Date();
+        const days = [];
+        const sales = [];
+        
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+          days.push(new Date(d));
+        }
+        
+        days.forEach(day => {
+          const dayOrders = orders.filter(order => {
+            const orderDate = new Date(order.orderDate);
+            return orderDate.toDateString() === day.toDateString() && order.orderStatus === "ขายสำเร็จ";
+          });
+          sales.push(dayOrders.reduce((sum, order) => sum + (order.total || 0), 0));
+        });
+        
+        return sales;
+      } else {
+        // มีแค่วันสิ้นสุด - แสดงข้อมูลจาก 7 วันก่อนไปถึงวันนั้น
+        const end = endDate;
+        const start = new Date(end);
+        start.setDate(start.getDate() - 6);
+        const days = [];
+        const sales = [];
+        
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+          days.push(new Date(d));
+        }
+        
+        days.forEach(day => {
+          const dayOrders = orders.filter(order => {
+            const orderDate = new Date(order.orderDate);
+            return orderDate.toDateString() === day.toDateString() && order.orderStatus === "ขายสำเร็จ";
+          });
+          sales.push(dayOrders.reduce((sum, order) => sum + (order.total || 0), 0));
+        });
+        
+        return sales;
+      }
     }
     // เดิม: n วันล่าสุด
     const dates = getLastNDays(n);
@@ -195,10 +276,41 @@ const DashboardPage = () => {
     });
   };
 
-  // ข้อมูลสำหรับกราฟยอดขายรายวัน (อิง selectedRange หรือ selectedDate)
+  // ข้อมูลสำหรับกราฟยอดขายรายวัน (อิง selectedRange หรือช่วงวันที่ที่เลือก)
   const salesData = {
-    labels: selectedDate
-      ? [new Date(selectedDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })]
+    labels: startDate && endDate
+      ? (() => {
+          const start = startDate;
+          const end = endDate;
+          const labels = [];
+          for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+            labels.push(d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }));
+          }
+          return labels;
+        })()
+      : startDate || endDate
+      ? (() => {
+          if (startDate) {
+            // มีแค่วันเริ่มต้น
+            const start = startDate;
+            const end = new Date();
+            const labels = [];
+            for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+              labels.push(d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }));
+            }
+            return labels;
+          } else {
+            // มีแค่วันสิ้นสุด
+            const end = endDate;
+            const start = new Date(end);
+            start.setDate(start.getDate() - 6);
+            const labels = [];
+            for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+              labels.push(d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }));
+            }
+            return labels;
+          }
+        })()
       : getLastNDays(selectedRange),
     datasets: [
       {
@@ -344,27 +456,49 @@ const DashboardPage = () => {
               {/* Date Picker Only */}
               <div className="flex items-center gap-2">
                 <div className="relative">
-                  <input
-                    type="date"
-                    className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition w-40"
-                    value={selectedDate}
-                    onChange={e => setSelectedDate(e.target.value)}
-                    placeholder="เลือกวันที่"
+                  <DatePicker
+                    selectsRange={true}
+                    startDate={startDate}
+                    endDate={endDate}
+                    onChange={(update) => setDateRange(update)}
+                    locale={th}
+                    dateFormat="dd/MM/yyyy"
+                    placeholderText="เลือกช่วงวันที่"
+                    className="border border-gray-300 rounded-lg pl-3 pr-10 py-2 text-sm focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition w-48"
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
-                    <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10m-9 8h10m-9-4h10M5 21h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2Z"/></svg>
-                  </span>
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                    <svg width="18" height="18" fill="none" viewBox="0 0 24 24">
+                      <path stroke="currentColor" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10m-9 8h10m-9-4h10M5 21h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2Z"/>
+                    </svg>
+                  </div>
                 </div>
-                {selectedDate && (
+                {(startDate || endDate) && (
                   <button
-                    className="ml-1 px-2 py-1 rounded text-xs bg-gray-200 hover:bg-gray-300"
-                    onClick={() => setSelectedDate("")}
+                    className="px-3 py-2 rounded-lg text-sm bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors"
+                    onClick={() => {
+                      setDateRange([null, null]);
+                    }}
                   >
-                    ล้างวัน
+                    ล้าง
                   </button>
                 )}
               </div>
             </div>
+
+            {/* แสดงช่วงวันที่ที่เลือก */}
+            {(startDate || endDate) && (
+              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  <span className="font-medium">ช่วงวันที่ที่เลือก:</span>{" "}
+                  {startDate && endDate 
+                    ? `${startDate.toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' })} - ${endDate.toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' })}`
+                    : startDate 
+                    ? `ตั้งแต่ ${startDate.toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' })}`
+                    : `จนถึง ${endDate.toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' })}`
+                  }
+                </p>
+              </div>
+            )}
             <div className="h-80">
               <Line 
                 data={salesData}
@@ -474,7 +608,12 @@ const DashboardPage = () => {
           <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-semibold text-gray-900">ออเดอร์ล่าสุด</h2>
-              <button className="text-sm text-indigo-600 hover:text-indigo-700">ดูทั้งหมด</button>
+              <button 
+                className="text-sm text-indigo-600 hover:text-indigo-700" 
+                onClick={() => navigate('/sales-history')}
+              >
+                ดูทั้งหมด
+              </button>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">

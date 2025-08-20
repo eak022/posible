@@ -8,6 +8,7 @@ import { th } from "date-fns/locale";
 import { AiOutlineCalendar, AiOutlineCheck, AiOutlineDollar, AiOutlineClose, AiOutlineEdit, AiOutlinePrinter, AiOutlineMinus, AiOutlinePlus, AiOutlineSearch } from "react-icons/ai";
 import { FiCreditCard } from "react-icons/fi";
 import { FaMoneyBillWave, FaBox } from "react-icons/fa";
+import { productService } from "../../services";
 
 const OrderHistory = () => {
   const [orders, setOrders] = useState([]);
@@ -148,6 +149,27 @@ const OrderHistory = () => {
       if (!oldProduct) {
         throw new Error("ไม่พบสินค้าในคำสั่งซื้อ");
       }
+
+      // ตรวจสอบจำนวนสินค้าที่มีอยู่ใน stock ก่อน
+      const oldQuantity = oldProduct.quantity;
+      const newQuantity = updates.quantity;
+      const quantityDiff = newQuantity - oldQuantity;
+      
+      // ถ้าต้องการเพิ่มจำนวน (quantityDiff > 0) ให้ตรวจสอบสต็อก
+      if (quantityDiff > 0) {
+        const stockCheck = await productService.checkStockAvailability(productId, quantityDiff);
+        
+        if (!stockCheck.isAvailable) {
+          Swal.fire({
+            icon: "warning",
+            title: "สต็อกสินค้าไม่เพียงพอ",
+            text: `สินค้า ${stockCheck.productName} มีในสต็อกเพียง ${stockCheck.totalAvailable} ${oldProduct.pack ? 'แพ็ค' : 'ชิ้น'} แต่ต้องการเพิ่ม ${quantityDiff} ${oldProduct.pack ? 'แพ็ค' : 'ชิ้น'}`,
+            confirmButtonText: "ตกลง",
+          });
+          return;
+        }
+      }
+      // ถ้าลดจำนวน (quantityDiff < 0) ไม่ต้องตรวจสอบสต็อก เพราะเป็นการคืนสต็อก
 
       const response = await orderService.updateOrderDetail(selectedOrder._id, {
         productId,
@@ -833,7 +855,33 @@ const OrderHistory = () => {
                       className="w-20 text-center border border-gray-300 rounded-lg py-2"
                     />
                     <button
-                      onClick={() => setEditingProduct({ ...editingProduct, quantity: editingProduct.quantity + 1 })}
+                      onClick={async () => {
+                        const currentQuantity = editingProduct.quantity;
+                        const oldQuantity = selectedOrder.products.find(p => p.productId === editingProduct.productId)?.quantity || 0;
+                        const quantityDiff = (currentQuantity + 1) - oldQuantity;
+                        
+                        // ถ้าต้องการเพิ่มจำนวน ให้ตรวจสอบสต็อกก่อน
+                        if (quantityDiff > 0) {
+                          try {
+                            const stockCheck = await productService.checkStockAvailability(editingProduct.productId, quantityDiff);
+                            
+                            if (!stockCheck.isAvailable) {
+                              Swal.fire({
+                                icon: "warning",
+                                title: "สต็อกสินค้าไม่เพียงพอ",
+                                text: `สินค้า ${stockCheck.productName} มีในสต็อกเพียง ${stockCheck.totalAvailable} ${editingProduct.pack ? 'แพ็ค' : 'ชิ้น'} แต่ต้องการเพิ่ม ${quantityDiff} ${editingProduct.pack ? 'แพ็ค' : 'ชิ้น'}`,
+                                confirmButtonText: "ตกลง",
+                              });
+                              return;
+                            }
+                          } catch (error) {
+                            console.error("Error checking stock:", error);
+                            // ถ้าไม่สามารถตรวจสอบสต็อกได้ ให้เพิ่มจำนวนเลย
+                          }
+                        }
+                        
+                        setEditingProduct({ ...editingProduct, quantity: currentQuantity + 1 });
+                      }}
                       className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
                     >
                       <AiOutlinePlus className="w-4 h-4" />

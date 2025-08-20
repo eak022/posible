@@ -9,7 +9,7 @@ const ProductStatusList = ({ status, onEdit, onDelete, index }) => {
       <div>{status.statusName}</div>
       <div className="flex justify-center gap-2">
         <button
-          id='edit-status-button-<status._id>'//เพิ่ม id
+          id={`edit-status-button-${index}`}
           className="p-2 bg-yellow-100 text-yellow-600 rounded-lg hover:bg-yellow-200"
           title="แก้ไขสถานะสินค้า"
           onClick={() => onEdit(status)}
@@ -17,7 +17,7 @@ const ProductStatusList = ({ status, onEdit, onDelete, index }) => {
           <FaEdit />
         </button>
         <button
-           id='delete-status-button-<status._id>'//เพิ่ม id
+          id={`delete-status-button-${index}`}
           className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200"
           title="ลบสถานะสินค้า"
           onClick={() => onDelete(status._id)}

@@ -593,7 +593,7 @@ const StripeQRPayment = ({ totalAmount, cartItems, onBack, onSubmit, onClose }) 
   }
 
   return (
-    <div className="max-w-md mx-auto w-full">
+    <div className="max-w-md mx-auto w-full overflow-y-auto max-h-screen">
       <div className="flex items-center justify-between mb-8">
         <h2 className="text-2xl font-semibold">ชำระด้วย QR Code</h2>
         

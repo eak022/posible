@@ -557,7 +557,7 @@ const PromotionPage = () => {
               </div>
               <div className="flex justify-center gap-2">
                 <button
-                  id="edit-promotion-button-<promotion._id>" //เพิ่ม id
+                  id={`edit-promotion-button-${index}`}
                   className="p-2 bg-yellow-100 text-yellow-600 rounded-lg hover:bg-yellow-200"
                   onClick={() => openEditModal(promotion)}
                   title="แก้ไข"
@@ -565,7 +565,7 @@ const PromotionPage = () => {
                   <FaEdit />
                 </button>
                 <button
-                  id="delete-promotion-button-<promotion._id>" //เพิ่ม id
+                  id={`delete-promotion-button-${index}`}
                   className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200"
                   onClick={() => handleDelete(promotion._id)}
                   title="ลบ"
@@ -573,7 +573,7 @@ const PromotionPage = () => {
                   <FaTrash />
                 </button>
                 <button
-                  id="print-promotion-button-<promotion._id>" //เพิ่ม id
+                  id={`print-promotion-button-${index}`}
                   className="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200"
                   onClick={() => openSinglePrintModal(promotion)}
                   title="ปริ้น"

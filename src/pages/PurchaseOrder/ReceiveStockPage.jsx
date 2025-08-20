@@ -358,27 +358,38 @@ const ReceiveStockPage = () => {
     if (loading) {
         return (
             <div className="flex items-center justify-center h-screen">
-                <div className="text-xl">กำลังโหลด...</div>
+                <div className="text-xl text-black">กำลังโหลด...</div>
             </div>
         );
     }
 
     return (
-        <div className="p-6">
+        <div className="p-6 text-black">
             <div className="max-w-7xl mx-auto">
                 {/* Header */}
                 <div className="flex justify-between items-center mb-6">
                     <div>
-                        <h1 className="text-2xl font-semibold">รับสินค้า</h1>
+                        <h1 className="text-2xl font-semibold text-black">รับสินค้า</h1>
                         <p className="text-gray-500 mt-1">จัดการการรับสินค้าจากใบสั่งซื้อ</p>
                     </div>
-                    <button
-                        onClick={() => navigate('/purchase-orders')}
-                        className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-                    >
-                        <FaArrowLeft />
-                        กลับไปใบสั่งซื้อ
-                    </button>
+                    <div className="flex gap-4 items-center">
+                        <div className="search-filter-container">
+                            <input
+                                type="text"
+                                placeholder="ค้นหาตามเลขใบสั่งของ หรือ ชื่อซัพพลายเออร์"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="search-input w-80 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                            />
+                        </div>
+                        <button
+                            onClick={() => navigate('/purchase-orders')}
+                            className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors focus:ring-2 focus:ring-gray-500 focus:outline-none"
+                        >
+                            <FaArrowLeft />
+                            กลับไปใบสั่งซื้อ
+                        </button>
+                    </div>
                 </div>
 
                 {/* Filter Tabs */}
@@ -386,7 +397,7 @@ const ReceiveStockPage = () => {
                     <div className="flex space-x-4 border-b">
                         <button
                             onClick={() => setFilter('pending')}
-                            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
                                 filter === 'pending'
                                     ? 'border-blue-500 text-blue-600'
                                     : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -396,7 +407,7 @@ const ReceiveStockPage = () => {
                         </button>
                         <button
                             onClick={() => setFilter('delivered')}
-                            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 ${
                                 filter === 'delivered'
                                     ? 'border-green-500 text-green-600'
                                     : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -406,7 +417,7 @@ const ReceiveStockPage = () => {
                         </button>
                         <button
                             onClick={() => setFilter('completed')}
-                            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
                                 filter === 'completed'
                                     ? 'border-purple-500 text-purple-600'
                                     : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -416,7 +427,7 @@ const ReceiveStockPage = () => {
                         </button>
                         <button
                             onClick={() => setFilter('all')}
-                            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 ${
                                 filter === 'all'
                                     ? 'border-gray-500 text-gray-600'
                                     : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -427,22 +438,11 @@ const ReceiveStockPage = () => {
                     </div>
                 </div>
 
-                {/* Search Bar */}
-                <div className="flex justify-between items-center mb-6">
-                    <div className="search-filter-container">
-                        <input
-                            type="text"
-                            placeholder="ค้นหาตามเลขใบสั่งของ หรือ ชื่อซัพพลายเออร์"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="search-input"
-                        />
-                    </div>
-                </div>
+
 
                 {/* Purchase Orders Table */}
                 <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-                    <div className="grid grid-cols-5 gap-4 p-4 bg-purple-500 text-white font-semibold">
+                    <div className="grid grid-cols-5 gap-4 p-4 bg-purple-500 text-white font-semibold items-center">
                         <div>เลขใบสั่งของ</div>
                         <div>ซัพพลายเออร์</div>
                         <div>จำนวนรายการสินค้า</div>
@@ -474,7 +474,7 @@ const ReceiveStockPage = () => {
                 {totalPages > 1 && (
                     <div className="flex justify-end items-center gap-2 p-4">
                         <button
-                            className="px-3 py-1 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50"
+                            className="px-3 py-1 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
                             onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                             disabled={currentPage === 1}
                         >
@@ -484,7 +484,7 @@ const ReceiveStockPage = () => {
                             หน้า {currentPage} / {totalPages}
                         </span>
                         <button
-                            className="px-3 py-1 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50"
+                            className="px-3 py-1 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
                             onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                             disabled={currentPage === totalPages}
                         >

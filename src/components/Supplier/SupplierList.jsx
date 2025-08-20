@@ -10,7 +10,7 @@ const SupplierList = ({ supplier, onEdit, onDelete, index }) => {
       <div>{supplier.phoneNumber}</div>
       <div className="flex justify-center gap-2">
         <button 
-          id='edit-supplier-button-<supplier._id>' //เพิ่ม id
+          id={`edit-supplier-button-${index}`}
           className="p-2 bg-yellow-100 text-yellow-600 rounded-lg hover:bg-yellow-200"
           title="แก้ไขซัพพลายเออร์"
           onClick={() => onEdit(supplier)}
@@ -18,7 +18,7 @@ const SupplierList = ({ supplier, onEdit, onDelete, index }) => {
           <FaEdit />
         </button>
         <button
-          id='delete-supplier-button-<supplier._id>'//เพิ่ม id
+          id={`delete-supplier-button-${index}`}
           className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200"
           title="ลบซัพพลายเออร์"
           onClick={() => onDelete(supplier._id)}

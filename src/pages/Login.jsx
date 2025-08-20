@@ -137,18 +137,6 @@ const Login = () => {
               </button>
             </div>
           </form>
-
-          <div className="text-center mt-6">
-            <p className="text-sm text-slate-600">
-              ยังไม่มีบัญชีผู้ใช้?{" "}
-              <Link
-                to="/register"
-                className="font-medium text-slate-800 hover:text-slate-600 transition-colors duration-300"
-              >
-                สมัครสมาชิก
-              </Link>
-            </p>
-          </div>
         </div>
       </div>
     </div>
