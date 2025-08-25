@@ -110,6 +110,12 @@ const EditProduct = () => {
     }
   };
 
+  // ✅ เพิ่มฟังก์ชันรีเซ็ตรูปภาพ
+  const handleResetImage = () => {
+    // รีเซ็ตรูปภาพกลับเป็นรูปเดิมจาก productData
+    setFormData({ ...formData, productImage: productData?.productImage || "" });
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     
@@ -160,15 +166,26 @@ const EditProduct = () => {
     }
 
     const formDataToSend = new FormData();
+    
+    // ตรวจสอบและเพิ่มข้อมูลแต่ละฟิลด์
     Object.keys(formData).forEach(key => {
       if (key === 'productStatuses') {
         const statusesToSend = formData[key].length > 0 ? formData[key] : originalStatuses;
         statusesToSend.forEach(status => {
           formDataToSend.append('productStatuses', status._id || status);
         });
+      } else if (key === 'productImage') {
+        // ✅ แก้ไข: ตรวจสอบว่า productImage เป็น File object หรือไม่
+        if (formData[key] instanceof File) {
+          // ถ้าเป็น File object (รูปใหม่) ให้เพิ่มเข้า FormData
+          formDataToSend.append(key, formData[key]);
+        }
+        // ถ้าเป็น string (URL รูปเก่า) ไม่ต้องเพิ่มเข้า FormData
+        // ระบบจะใช้รูปเก่าที่มีอยู่
       } else {
-      formDataToSend.append(key, formData[key]);
-    }
+        // ฟิลด์อื่นๆ เพิ่มตามปกติ
+        formDataToSend.append(key, formData[key]);
+      }
     });
 
     try {
@@ -182,6 +199,7 @@ const EditProduct = () => {
       
       navigate("/product");
     } catch (err) {
+      console.error("Error updating product:", err);
       Swal.fire({ icon: 'error', title: 'ไม่สามารถอัปเดตสินค้าได้', text: 'กรุณาลองใหม่อีกครั้ง' });
     }
     setLoading(false);
@@ -354,6 +372,14 @@ const EditProduct = () => {
                       >
                         <span className="text-sm">เปลี่ยนรูปภาพ</span>
                       </label>
+                      <button
+                        type="button"
+                        onClick={handleResetImage}
+                        className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
+                        title="รีเซ็ตรูปภาพ"
+                      >
+                        <FaTimes className="text-white" />
+                      </button>
                     </div>
                   )}
                 </div>
