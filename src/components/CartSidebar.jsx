@@ -97,6 +97,11 @@ const CartSidebar = ({
   };
 
   const getItemPrice = (item) => {
+    // คืนค่าราคาต่อชิ้น (ไม่ใช่ราคารวม)
+    return item.price;
+  };
+
+  const getItemTotalPrice = (item) => {
     // คำนวณราคารวมของสินค้าแต่ละรายการ (ราคาต่อหน่วย × จำนวน)
     return item.price * item.quantity;
   };
@@ -112,8 +117,8 @@ const CartSidebar = ({
 
   const calculateTotal = () => {
     return cartItems.reduce((total, item) => {
-      const itemPrice = getItemPrice(item);
-      return total + itemPrice; // ไม่ต้องคูณด้วย quantity อีกครั้ง เพราะ getItemPrice คำนวณแล้ว
+      const itemTotalPrice = getItemTotalPrice(item);
+      return total + itemTotalPrice;
     }, 0);
   };
 
@@ -408,7 +413,8 @@ const CartSidebar = ({
   // Render functions
   const renderCartItem = (item) => {
     const isPromo = Boolean(item.promotionId);
-    const currentPrice = getItemPrice(item);
+    const currentPrice = getItemPrice(item); // ราคาต่อชิ้น
+    const itemTotalPrice = getItemTotalPrice(item); // ราคารวมของรายการ
     const originalPrice = getOriginalPrice(item);
     const showStrikethrough = isPromo && originalPrice && originalPrice > currentPrice;
 
@@ -460,7 +466,7 @@ const CartSidebar = ({
                 </div>
             </div>
             <p className="font-medium whitespace-nowrap">
-                {formatPrice(currentPrice * item.quantity)}
+                {formatPrice(itemTotalPrice)}
             </p>
           </div>
           <div className="flex items-center justify-between mt-4">
@@ -588,7 +594,13 @@ const CartSidebar = ({
                     setLoading(true);
                     const nextCode = scanQueueRef.current.shift();
                     try {
+                      // ปิดโมดัลสแกนก่อนแสดง SweetAlert
+                      setIsScanning(false);
                       await handleBarcodeDetected(nextCode);
+                      // เปิดโมดัลสแกนใหม่หลังจากปิด SweetAlert
+                      setTimeout(() => {
+                        setIsScanning(true);
+                      }, 200);
                     } catch (_) {}
                     // ดำเนินการตัวถัดไป
                     processNext();

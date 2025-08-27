@@ -2,8 +2,13 @@ import React from "react";
 import { Outlet } from "react-router-dom";
 import SidebarLeft from "../components/SidebarLeft";
 import Navbar from "../components/Navbar";
+import useTokenRefresh from "../hooks/useTokenRefresh";
+import TokenStatus from "../components/TokenStatus";
 
 const MainLayout = () => {
+  // ใช้ hook สำหรับ auto refresh token
+  useTokenRefresh();
+
   return (
     <div className="flex min-h-screen">
       {/* Sidebar */}
@@ -21,6 +26,9 @@ const MainLayout = () => {
           <Outlet />
         </main>
       </div>
+
+      {/* Token Status Indicator */}
+      <TokenStatus />
     </div>
   );
 };

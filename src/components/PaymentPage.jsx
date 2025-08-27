@@ -53,14 +53,13 @@ const OrderSummary = ({ cartItems, onClose }) => {
   };
 
   const getItemPrice = (item) => {
-    // ใช้ราคาจาก item โดยตรง (ไม่ต้องใช้ promotions)
-    if (item.pack) {
-      // ถ้าเป็นแพ็ค ใช้ราคาแพ็ค
-      return item.sellingPricePerPack || item.price;
-    } else {
-      // ถ้าเป็นชิ้น ใช้ราคาต่อชิ้น
-      return item.sellingPricePerUnit || item.price;
-    }
+    // คืนค่าราคาต่อชิ้น (ไม่ใช่ราคารวม)
+    return item.price;
+  };
+
+  const getItemTotalPrice = (item) => {
+    // คำนวณราคารวมของสินค้าแต่ละรายการ (ราคาต่อหน่วย × จำนวน)
+    return item.price * item.quantity;
   };
 
   const getOriginalPrice = (item) => {
@@ -77,8 +76,8 @@ const OrderSummary = ({ cartItems, onClose }) => {
 
   const calculateTotal = () => {
     return cartItems.reduce((total, item) => {
-      const itemPrice = getItemPrice(item);
-      return total + itemPrice; // ไม่ต้องคูณด้วย quantity อีกครั้ง เพราะ getItemPrice คำนวณแล้ว
+      const itemTotalPrice = getItemTotalPrice(item);
+      return total + itemTotalPrice;
     }, 0);
   };
 
@@ -111,7 +110,8 @@ const OrderSummary = ({ cartItems, onClose }) => {
       <div className="flex-1 overflow-y-auto space-y-4">
         {cartItems.map((item) => {
           const isPromo = Boolean(item.promotionId);
-          const currentPrice = getItemPrice(item);
+          const currentPrice = getItemPrice(item); // ราคาต่อชิ้น
+          const itemTotalPrice = getItemTotalPrice(item); // ราคารวมของรายการ
           const originalPrice = getOriginalPrice(item);
           const discountPercentage = isPromo && originalPrice > currentPrice
             ? calculateDiscountPercentage(originalPrice, currentPrice)
@@ -147,7 +147,7 @@ const OrderSummary = ({ cartItems, onClose }) => {
                           {formatPrice(originalPrice * item.quantity)}
                         </p>
                         <p className="font-medium text-red-500">
-                          {formatPrice(currentPrice * item.quantity)}
+                          {formatPrice(itemTotalPrice)}
                         </p>
                         <p className="text-xs text-green-600 flex items-center gap-1">
                           <FaPercent size={8} />
@@ -156,7 +156,7 @@ const OrderSummary = ({ cartItems, onClose }) => {
                       </div>
                     ) : (
                       <p className="font-medium">
-                        {formatPrice(currentPrice * item.quantity)}
+                        {formatPrice(itemTotalPrice)}
                       </p>
                     )}
                   </div>
@@ -359,6 +359,11 @@ const PaymentPage = ({ isOpen, onClose, cartItems, onSubmit }) => {
   ];
 
   const getItemPrice = (item) => {
+    // คืนค่าราคาต่อชิ้น (ไม่ใช่ราคารวม)
+    return item.price;
+  };
+
+  const getItemTotalPrice = (item) => {
     // คำนวณราคารวมของสินค้าแต่ละรายการ (ราคาต่อหน่วย × จำนวน)
     return item.price * item.quantity;
   };
@@ -369,8 +374,8 @@ const PaymentPage = ({ isOpen, onClose, cartItems, onSubmit }) => {
 
   const calculateTotal = () => {
     return cartItems.reduce((total, item) => {
-      const itemPrice = getItemPrice(item);
-      return total + itemPrice; // ไม่ต้องคูณด้วย quantity อีกครั้ง เพราะ getItemPrice คำนวณแล้ว
+      const itemTotalPrice = getItemTotalPrice(item);
+      return total + itemTotalPrice;
     }, 0);
   };
 

@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AiOutlineClose } from "react-icons/ai";
 import Quagga from "quagga";
+import Swal from "sweetalert2";
 
 const BarcodeScanner = ({ isOpen, onClose, onBarcodeDetected }) => {
   const isInitialized = useRef(false);
@@ -86,7 +87,19 @@ const BarcodeScanner = ({ isOpen, onClose, onBarcodeDetected }) => {
             setScanStatus("success");
 
             // ส่งข้อมูลบาร์โค้ดไปยัง parent component โดยไม่ปิด modal
-            try { onBarcodeDetected(code); } catch (e) {}
+            try { 
+              onBarcodeDetected(code);
+              // แสดง SweetAlert แจ้งว่าสแกนสำเร็จและเพิ่มสินค้าลงตะกร้าแล้ว
+              Swal.fire({
+                icon: "success",
+                title: "สแกนสำเร็จ!",
+                text: "เพิ่มสินค้าลงตะกร้าแล้ว",
+                confirmButtonText: "ตกลง",
+                timer: 1500,
+                timerProgressBar: true,
+                showConfirmButton: false
+              });
+            } catch (e) {}
 
             // กลับสู่สถานะ scanning อัตโนมัติ และปลดล็อกกันยิงซ้ำหลังจากหน่วงตามคูลดาวน์
             setTimeout(() => {
