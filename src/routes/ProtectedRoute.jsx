@@ -15,21 +15,15 @@ const ProtectedRoute = ({ children }) => {
         // ตรวจสอบว่ามี token อยู่ในที่ต่างๆ หรือไม่
         const hasLocalToken = localStorage.getItem('x-access-token') || localStorage.getItem('x-refresh-token');
         const hasSessionToken = sessionStorage.getItem('x-access-token') || sessionStorage.getItem('x-refresh-token');
-        const hasCookieToken = document.cookie.includes('x-access-token') || document.cookie.includes('x-refresh-token');
         
         console.log("🔍 ตรวจสอบ tokens:", {
           localStorage: !!hasLocalToken,
           sessionStorage: !!hasSessionToken,
-          cookies: !!hasCookieToken
+          cookies: "HttpOnly (ไม่สามารถอ่านได้จาก JavaScript)"
         });
         
-        // ถ้าไม่มี token ใดๆ เลย ให้ตั้งค่า isAuthenticated เป็น false ทันที
-        if (!hasLocalToken && !hasSessionToken && !hasCookieToken) {
-          console.log("🚫 ไม่พบ token ใดๆ - ตั้งค่า isAuthenticated เป็น false");
-          clearAllTokens();
-          setIsChecking(false);
-          return;
-        }
+        // เนื่องจาก backend ใช้ HttpOnly cookies เราจะไม่สามารถตรวจสอบได้จาก JavaScript
+        // ดังนั้นให้เรียก checkAuth() เสมอเพื่อให้ backend ตรวจสอบ cookies
         
         await checkAuth();
         

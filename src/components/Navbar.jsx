@@ -131,7 +131,7 @@ const Navbar = () => {
                   {user?.username || "ผู้ใช้"}
                 </span>
                 <span className="text-gray-500 text-sm">
-                  {user?.role || "ผู้ใช้งาน"}
+                  {user?.shopName || "ร้านค้า"}
                 </span>
               </div>
 

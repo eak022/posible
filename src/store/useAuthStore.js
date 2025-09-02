@@ -1,11 +1,14 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import api from '../services/api';
 
-const useAuthStore = create((set, get) => ({
-    user: null,
-    isAuthenticated: false,
-    isLoading: false,
-    error: null,
+const useAuthStore = create(
+    persist(
+        (set, get) => ({
+            user: null,
+            isAuthenticated: false,
+            isLoading: false,
+            error: null,
 
     // ลงทะเบียนผู้ใช้ใหม่
     register: async (userData) => {
@@ -211,7 +214,16 @@ const useAuthStore = create((set, get) => ({
 
     // ล้าง error
     clearError: () => set({ error: null })
-}));
+        }),
+        {
+            name: 'auth-storage', // ชื่อ key ใน localStorage
+            partialize: (state) => ({ 
+                user: state.user, 
+                isAuthenticated: state.isAuthenticated 
+            }), // เฉพาะ user และ isAuthenticated ที่จะ persist
+        }
+    )
+);
 
 // เพิ่ม store เข้า window เพื่อให้ API interceptor เข้าถึงได้
 if (typeof window !== 'undefined') {
