@@ -1,20 +1,47 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { FaArrowLeft, FaPlus, FaEdit, FaTrash } from 'react-icons/fa';
 import Swal from 'sweetalert2';
 import productService from '../../services/product.service';
 import LotList from '../../components/LotManagement/LotList';
+import { ProductContext } from '../../context/ProductContext';
 
 const LotManagementPage = () => {
   const { productId } = useParams();
   const navigate = useNavigate();
+  const { products, updateProduct } = useContext(ProductContext);
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [stockInfo, setStockInfo] = useState(null);
 
   useEffect(() => {
-    fetchProductData();
-  }, [productId]);
+    // ✅ ใช้ข้อมูลจาก ProductContext แทนการเรียก API
+    const productFromContext = products.find(p => p._id === productId);
+    console.log('LotManagementPage useEffect - products:', products.length, 'productId:', productId);
+    console.log('Found product in context:', productFromContext);
+    
+    if (productFromContext) {
+      setProduct(productFromContext);
+      setLoading(false);
+      
+      // ✅ อัพเดท stockInfo เมื่อ product เปลี่ยน
+      updateStockInfo(productFromContext);
+    } else {
+      // ถ้าไม่มีใน Context ให้เรียก API
+      console.log('Product not found in context, fetching from API...');
+      fetchProductData();
+    }
+  }, [productId, products]);
+
+  // ✅ ฟังก์ชันอัพเดท stockInfo
+  const updateStockInfo = async (productData) => {
+    try {
+      const stockData = await productService.checkStockAvailability(productId, 1);
+      setStockInfo(stockData);
+    } catch (error) {
+      console.error('Error updating stock info:', error);
+    }
+  };
 
   const fetchProductData = async () => {
     try {
@@ -39,7 +66,9 @@ const LotManagementPage = () => {
   };
 
   const handleLotUpdated = () => {
-    fetchProductData(); // รีเฟรชข้อมูลเมื่อมีการอัปเดตล็อต
+    // ✅ ไม่ต้องเรียก fetchProductData() เพราะ LotList จะอัพเดท ProductContext แล้ว
+    // และ useEffect จะอัพเดท product state อัตโนมัติ
+    console.log('Lot updated - ProductContext will be updated by LotList');
   };
 
   if (loading) {

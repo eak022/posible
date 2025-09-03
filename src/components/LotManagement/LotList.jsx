@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { FaPlus, FaEdit, FaTrash } from 'react-icons/fa';
 import Swal from 'sweetalert2';
 import productService from '../../services/product.service';
+import { ProductContext } from '../../context/ProductContext';
 
 const LotList = ({ productId, productName, packSize = 1, onLotUpdated }) => {
+  const { updateProduct } = useContext(ProductContext);
   const [lots, setLots] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedStatus, setSelectedStatus] = useState('active');
@@ -34,7 +36,7 @@ const LotList = ({ productId, productName, packSize = 1, onLotUpdated }) => {
 
   const handleAddLot = async (lotData) => {
     try {
-      await productService.addLotToProduct(productId, lotData);
+      const response = await productService.addLotToProduct(productId, lotData);
       Swal.fire({
         icon: 'success',
         title: 'เพิ่มล็อตสำเร็จ',
@@ -42,6 +44,32 @@ const LotList = ({ productId, productName, packSize = 1, onLotUpdated }) => {
       });
       setShowAddModal(false);
       fetchLots();
+      
+      // ✅ อัพเดทสต็อกสินค้าใน ProductContext ทันที
+      console.log('Add lot response:', response);
+      if (response && response.product) {
+        updateProduct(productId, {
+          quantity: response.product.quantity,
+          lots: response.product.lots,
+          totalQuantity: response.product.totalQuantity || response.product.quantity
+        });
+        console.log('Updated product in context:', response.product);
+      } else {
+        // Fallback: เรียก API ใหม่เพื่อดึงข้อมูลสินค้าล่าสุด
+        console.log('No product in response, fetching latest product data...');
+        try {
+          const latestProduct = await productService.getProductById(productId);
+          updateProduct(productId, {
+            quantity: latestProduct.quantity,
+            lots: latestProduct.lots,
+            totalQuantity: latestProduct.totalQuantity || latestProduct.quantity
+          });
+          console.log('Updated product from API:', latestProduct);
+        } catch (error) {
+          console.error('Error fetching latest product:', error);
+        }
+      }
+      
       if (onLotUpdated) onLotUpdated();
     } catch (error) {
       Swal.fire({
@@ -64,13 +92,39 @@ const LotList = ({ productId, productName, packSize = 1, onLotUpdated }) => {
 
     if (result.isConfirmed) {
       try {
-        await productService.disposeLot(productId, lotNumber, 'manual');
+        const response = await productService.disposeLot(productId, lotNumber, 'manual');
         Swal.fire({
           icon: 'success',
           title: 'ตัดจำหน่ายสำเร็จ',
           text: 'ล็อตถูกตัดจำหน่ายแล้ว'
         });
         fetchLots();
+        
+        // ✅ อัพเดทสต็อกสินค้าใน ProductContext ทันที
+        console.log('Dispose lot response:', response);
+        if (response && response.product) {
+          updateProduct(productId, {
+            quantity: response.product.quantity,
+            lots: response.product.lots,
+            totalQuantity: response.product.totalQuantity || response.product.quantity
+          });
+          console.log('Updated product in context:', response.product);
+        } else {
+          // Fallback: เรียก API ใหม่เพื่อดึงข้อมูลสินค้าล่าสุด
+          console.log('No product in response, fetching latest product data...');
+          try {
+            const latestProduct = await productService.getProductById(productId);
+            updateProduct(productId, {
+              quantity: latestProduct.quantity,
+              lots: latestProduct.lots,
+              totalQuantity: latestProduct.totalQuantity || latestProduct.quantity
+            });
+            console.log('Updated product from API:', latestProduct);
+          } catch (error) {
+            console.error('Error fetching latest product:', error);
+          }
+        }
+        
         if (onLotUpdated) onLotUpdated();
       } catch (error) {
         Swal.fire({
@@ -85,7 +139,7 @@ const LotList = ({ productId, productName, packSize = 1, onLotUpdated }) => {
   // ✅ ฟังก์ชันใหม่: แก้ไขข้อมูลล็อตทั้งหมด
   const handleUpdateLotComplete = async (lotNumber, lotData, reason) => {
     try {
-      await productService.updateLotComplete(productId, lotNumber, lotData, reason);
+      const response = await productService.updateLotComplete(productId, lotNumber, lotData, reason);
       Swal.fire({
         icon: 'success',
         title: 'อัปเดตล็อตสำเร็จ',
@@ -94,6 +148,32 @@ const LotList = ({ productId, productName, packSize = 1, onLotUpdated }) => {
       setShowEditCompleteModal(false);
       setSelectedLot(null);
       fetchLots();
+      
+      // ✅ อัพเดทสต็อกสินค้าใน ProductContext ทันที
+      console.log('Update lot response:', response);
+      if (response && response.product) {
+        updateProduct(productId, {
+          quantity: response.product.quantity,
+          lots: response.product.lots,
+          totalQuantity: response.product.totalQuantity || response.product.quantity
+        });
+        console.log('Updated product in context:', response.product);
+      } else {
+        // Fallback: เรียก API ใหม่เพื่อดึงข้อมูลสินค้าล่าสุด
+        console.log('No product in response, fetching latest product data...');
+        try {
+          const latestProduct = await productService.getProductById(productId);
+          updateProduct(productId, {
+            quantity: latestProduct.quantity,
+            lots: latestProduct.lots,
+            totalQuantity: latestProduct.totalQuantity || latestProduct.quantity
+          });
+          console.log('Updated product from API:', latestProduct);
+        } catch (error) {
+          console.error('Error fetching latest product:', error);
+        }
+      }
+      
       if (onLotUpdated) onLotUpdated();
     } catch (error) {
       Swal.fire({

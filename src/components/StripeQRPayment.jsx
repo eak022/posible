@@ -354,16 +354,18 @@ const StripeQRPayment = ({ totalAmount, cartItems, onBack, onSubmit, onClose }) 
         // Order ถูกสร้างแล้ว
         clearInterval(statusCheckInterval);
         
-        // อัปเดต paymentData ด้วย orderId
+        // อัปเดต paymentData ด้วย orderId และ order object
         setPaymentData(prev => prev ? { 
           ...prev, 
           orderId: response.data.order._id,
+          order: response.data.order, // ✅ เพิ่ม order object
           status: 'succeeded'
         } : null);
         
         handlePaymentSuccess({
           ...response.data,
-          orderId: response.data.order._id
+          orderId: response.data.order._id,
+          order: response.data.order // ✅ เพิ่ม order object
         });
               } else {
           // ยังไม่สร้าง Order ให้รอต่อไป
@@ -682,7 +684,10 @@ const StripeQRPayment = ({ totalAmount, cartItems, onBack, onSubmit, onClose }) 
                         setPaymentData(prev => prev ? { ...prev, status } : null);
                         
                         if (status === 'paid') {
-                          handlePaymentSuccess(response.data);
+                          handlePaymentSuccess({
+                            ...response.data,
+                            order: response.data.order // ✅ เพิ่ม order object
+                          });
                         } else {
                           // แสดงสถานะปัจจุบันโดยไม่จัดการล้มเหลว
                           Swal.fire({

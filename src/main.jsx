@@ -10,6 +10,7 @@ import { SupplierProvider } from "./context/SupplierContext";
 import { StatusProvider } from "./context/StatusContext";
 import { PurchaseOrderProvider } from "./context/PurchaseOrderContext";
 import { PromotionProvider } from "./context/PromotionContext";
+import { OrderProvider } from "./context/OrderContext";
 
 Modal.setAppElement("#root"); // เพิ่มบรรทัดนี้
 
@@ -31,7 +32,9 @@ createRoot(document.getElementById("root")).render(
           <StatusProvider>
             <PurchaseOrderProvider>
               <PromotionProvider>
-                <RouterProvider router={router} />
+                <OrderProvider>
+                  <RouterProvider router={router} />
+                </OrderProvider>
               </PromotionProvider>
             </PurchaseOrderProvider>
           </StatusProvider>

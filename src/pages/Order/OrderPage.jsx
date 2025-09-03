@@ -1,26 +1,34 @@
 import { useParams } from "react-router-dom";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useContext, useMemo } from "react";
 import Card from "../../components/Card";
 import FilterModal from "../../components/FilterModal";
 import CartSidebar from "../../components/CartSidebar";
 import useFilter from "../../hooks/useFilter";
 import { FaFilter, FaShoppingCart, FaTags } from "react-icons/fa";
 import useAuthStore from "../../store/useAuthStore";
-import { productService, categoryService, cartService, promotionService } from "../../services";
+import { cartService, promotionService } from "../../services";
 import Swal from "sweetalert2";
-import { useProduct } from "../../context/ProductContext";
+import { ProductContext } from "../../context/ProductContext";
 
 const OrderPage = () => {
   const { category } = useParams();
   const { user } = useAuthStore();
-  const { products, setProducts } = useProduct();
+  const { 
+    products, 
+    loading, 
+    categories, 
+    getProductsByCategory, 
+    fetchProducts,
+    fetchCategories,
+    updateProduct
+  } = useContext(ProductContext);
+  
   const [cartItems, setCartItems] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [priceRange, setPriceRange] = useState({ min: "", max: "" });
   const [stockRange, setStockRange] = useState({ min: "", max: "" });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [categoryName, setCategoryName] = useState("");
   const [activePromotions, setActivePromotions] = useState([]);
@@ -33,60 +41,78 @@ const OrderPage = () => {
   const filterExpiredProducts = (products) => {
     const currentDate = new Date();
     return products.filter(product => {
-      // ใช้ nearestExpirationDate จาก virtual field
-      if (product.nearestExpirationDate) {
-        const expirationDate = new Date(product.nearestExpirationDate);
-        return expirationDate > currentDate;
+      // ✅ ตรวจสอบว่ามีล็อตที่ยังไม่หมดอายุหรือไม่
+      if (product.lots && Array.isArray(product.lots)) {
+        const nonExpiredLots = product.lots.filter(lot => 
+          lot.status === 'active' && 
+          lot.quantity > 0 && 
+          (!lot.expirationDate || new Date(lot.expirationDate) > currentDate)
+        );
+        return nonExpiredLots.length > 0; // แสดงเฉพาะสินค้าที่มีล็อตที่ยังไม่หมดอายุ
       }
+      
       // Fallback สำหรับสินค้าเก่าที่ไม่มี lots
       if (product.expirationDate) {
         const expirationDate = new Date(product.expirationDate);
         return expirationDate > currentDate;
       }
+      
       // ✅ ถ้าไม่มีข้อมูลวันหมดอายุ (ไม่มี lots หรือไม่มีวันหมดอายุ) ให้แสดง
       return true;
     });
   };
 
-  const refetchData = async () => {
-    try {
-      setLoading(true);
-      let response;
+  // ใช้ useMemo เพื่อกรองสินค้าตามหมวดหมู่และกรองสินค้าที่หมดอายุ
+  const filteredProductsByCategory = useMemo(() => {
+    let filteredProducts = getProductsByCategory(category);
+    // กรองสินค้าที่หมดอายุออก
+    return filterExpiredProducts(filteredProducts);
+  }, [products, category, getProductsByCategory]);
 
-      // ดึงข้อมูลหมวดหมู่
-      if (category) {
-        const categoryResponse = await categoryService.getCategoryById(
-          category
-        );
-        setCategoryName(categoryResponse.categoryName);
-      } else {
-        setCategoryName("");
-      }
+  // ดึงชื่อหมวดหมู่จาก Context แทนการเรียก API
+  useEffect(() => {
+    if (category && categories.length > 0) {
+      const foundCategory = categories.find(cat => cat._id === category);
+      setCategoryName(foundCategory?.categoryName || "");
+    } else {
+      setCategoryName("");
+    }
+  }, [category, categories]);
 
-      // ดึงข้อมูลสินค้าทั้งหมด
-      response = await productService.getAllProducts();
-      let products = response.data || response;
-
-      // กรองสินค้าที่หมดอายุออก
-      products = filterExpiredProducts(products);
-
-      // กรองสินค้าตามหมวดหมู่
-      if (category) {
-        products = products.filter(
-          (product) => product.categoryId._id === category
-        );
-      }
-
-      setProducts(products);
-
-      // ดึงข้อมูล cart items
-      const cartResponse = await cartService.getAllCarts();
-      setCartItems(cartResponse);
-
-      // ดึงข้อมูลโปรโมชั่นที่ใช้งานได้
+  // ตรวจสอบว่าต้องดึงข้อมูลใหม่หรือไม่
+  useEffect(() => {
+    const initializeData = async () => {
       try {
+        // ถ้ายังไม่มีข้อมูลสินค้า ให้ดึงมา
+        if (products.length === 0) {
+          await fetchProducts();
+        }
+        
+        // ถ้ายังไม่มีข้อมูลหมวดหมู่ ให้ดึงมา
+        if (categories.length === 0) {
+          await fetchCategories();
+        }
+      } catch (err) {
+        setError(err.message);
+        console.error("Error initializing data:", err);
+      }
+    };
+
+    initializeData();
+  }, [products.length, categories.length, fetchProducts, fetchCategories]);
+
+  // ดึงข้อมูล cart และ promotions
+  useEffect(() => {
+    const fetchCartAndPromotions = async () => {
+      try {
+        // ดึงข้อมูล cart items
+        const cartResponse = await cartService.getAllCarts();
+        setCartItems(cartResponse);
+
+        // ดึงข้อมูลโปรโมชั่นที่ใช้งานได้
         const promotionsResponse = await promotionService.getActivePromotions();
         setActivePromotions(promotionsResponse || []);
+        
         const promoMap = {};
         (promotionsResponse || []).forEach(promo => {
           if (promo.productId && promo.productId._id) {
@@ -96,30 +122,22 @@ const OrderPage = () => {
         setPromotionMap(promoMap);
         
         // นับจำนวนสินค้าที่มีโปรโมชั่น (เฉพาะสินค้าที่ไม่หมดอายุ)
-        const productsWithPromotions = products.filter(product => 
+        const productsWithPromotions = filteredProductsByCategory.filter(product => 
           promotionsResponse.some(promo => promo.productId._id === product._id)
         );
         setPromotionCount(productsWithPromotions.length);
       } catch (error) {
-        console.error("Error fetching promotions:", error);
+        console.error("Error fetching cart and promotions:", error);
         setActivePromotions([]);
         setPromotionCount(0);
       }
-    } catch (err) {
-      setError(err.message);
-      console.error("Error fetching data:", err);
-      setProducts([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
 
-  useEffect(() => {
-    refetchData();
-  }, [category]);
+    fetchCartAndPromotions();
+  }, [filteredProductsByCategory]);
 
   const filteredProducts = useFilter(
-    products,
+    filteredProductsByCategory, // ใช้ข้อมูลที่กรองแล้วแทน
     categoryName,
     searchTerm,
     priceRange,
@@ -128,8 +146,23 @@ const OrderPage = () => {
 
   // เรียงสินค้าที่ totalQuantity = 0 ให้อยู่ล่างสุด (ใช้ข้อมูลจาก lots)
   const sortedProducts = [...filteredProducts].sort((a, b) => {
-    const aQuantity = a.totalQuantity || a.quantity || 0;
-    const bQuantity = b.totalQuantity || b.quantity || 0;
+    // ✅ คำนวณจำนวนที่ขายได้ (เฉพาะล็อตที่ยังไม่หมดอายุ)
+    const getSellableQuantity = (product) => {
+      if (product.lots && Array.isArray(product.lots)) {
+        const currentDate = new Date();
+        return product.lots
+          .filter(lot => 
+            lot.status === 'active' && 
+            lot.quantity > 0 && 
+            (!lot.expirationDate || new Date(lot.expirationDate) > currentDate)
+          )
+          .reduce((total, lot) => total + lot.quantity, 0);
+      }
+      return product.totalQuantity || product.quantity || 0;
+    };
+    
+    const aQuantity = getSellableQuantity(a);
+    const bQuantity = getSellableQuantity(b);
     if (aQuantity === 0 && bQuantity !== 0) return 1;
     if (aQuantity !== 0 && bQuantity === 0) return -1;
     return 0;
@@ -394,7 +427,22 @@ const OrderPage = () => {
           setCartItems={setCartItems}
           handleAddToCart={handleAddToCart}
           user={user}
-          refetchData={refetchData}
+          refetchData={() => {
+            // รีเฟรชข้อมูล cart, promotions และ products
+            const refreshAllData = async () => {
+              try {
+                // รีเฟรช cart
+                const cartResponse = await cartService.getAllCarts();
+                setCartItems(cartResponse);
+                
+                // ✅ รีเฟรช products เพื่ออัพเดทสต็อก
+                await fetchProducts(true); // force refresh
+              } catch (error) {
+                console.error("Error refreshing data:", error);
+              }
+            };
+            refreshAllData();
+          }}
         />
       )}
     </div>

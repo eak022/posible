@@ -68,6 +68,15 @@ const NotificationModal = ({ isOpen, onClose }) => {
                 setNotificationCounts(response.counts);
                 console.log('Notifications state updated:', response.notifications);
                 console.log('Notification counts state updated:', response.counts);
+                // Debug: ดูข้อมูล lots ในแต่ละ notification
+                response.notifications.expired.forEach((notif, index) => {
+                    console.log(`Expired notification ${index}:`, {
+                        productName: notif.productName,
+                        quantity: notif.quantity,
+                        lots: notif.lots,
+                        lotsLength: notif.lots ? notif.lots.length : 'no lots'
+                    });
+                });
             } else {
                 setError('ไม่สามารถดึงข้อมูลการแจ้งเตือนได้');
                 console.error('API response success is false:', response);
@@ -108,24 +117,23 @@ const NotificationModal = ({ isOpen, onClose }) => {
                     const productResponse = await productService.getProductById(notification.productId);
                     const product = productResponse.data || productResponse;
                     
-                    // ใช้จำนวนจาก notification หรือดึงจากล็อตที่หมดอายุ
-                    let totalExpiredQuantity = notification.quantity || 0;
-                    
-                    // ถ้าไม่มีข้อมูล quantity ใน notification ให้ดึงจากล็อตที่หมดอายุ
-                    if (!totalExpiredQuantity) {
-                        const expiredLots = product.lots.filter(lot => {
-                            const expirationDate = new Date(lot.expirationDate);
-                            const currentDate = new Date();
-                            return expirationDate <= currentDate && lot.status === 'active' && lot.quantity > 0;
-                        });
-                        totalExpiredQuantity = expiredLots.reduce((sum, lot) => sum + lot.quantity, 0);
-                    }
+                    // หาล็อตที่หมดอายุจริง
+                    const currentDate = new Date();
+                    const expiredLots = product.lots.filter(lot => {
+                        return lot.status === 'active' && 
+                               lot.quantity > 0 && 
+                               lot.expirationDate && 
+                               new Date(lot.expirationDate) <= currentDate;
+                    });
 
-                    if (totalExpiredQuantity <= 0) {
+                    if (expiredLots.length === 0) {
                         Swal.fire('แจ้งเตือน', 'ไม่มีล็อตที่หมดอายุและมีสต็อกอยู่', 'info');
                         return;
                     }
 
+                    // สร้างรายการสินค้าสำหรับตัดจำหน่าย (รวมจำนวนทั้งหมด)
+                    const totalExpiredQuantity = expiredLots.reduce((sum, lot) => sum + lot.quantity, 0);
+                    
                     const disposeData = {
                         userName: user.username,
                         orderStatus: 'ตัดจำหน่าย',
@@ -291,9 +299,22 @@ const NotificationModal = ({ isOpen, onClose }) => {
                                                         <div className="flex-grow">
                                                             <h4 className="font-medium text-gray-900">{notification.productName}</h4>
                                                             <p className="text-sm text-gray-500">
-                                                                {notification.status === 'สินค้าใกล้หมด' && `จำนวนคงเหลือ: ${notification.quantity} ชิ้น`}
+                                                                {notification.status === 'สินค้าใกล้หมด' && `จำนวนคงเหลือ: ${notification.quantity || 0} ชิ้น`}
+                                                                {notification.status === 'สินค้าหมด' && `จำนวนคงเหลือ: 0 ชิ้น`}
                                                                 {notification.status === 'สินค้าใกล้หมดอายุ' && notification.expirationDate && `หมดอายุในวันที่: ${new Date(notification.expirationDate).toLocaleDateString('th-TH')}`}
-                                                                {notification.status === 'หมดอายุ' && notification.expirationDate && `หมดอายุแล้วเมื่อวันที่: ${new Date(notification.expirationDate).toLocaleDateString('th-TH')} (จำนวน: ${notification.quantity} ชิ้น)`}
+                                                                {notification.status === 'หมดอายุ' && notification.expiredLots && notification.expiredLots.length > 0 && (
+                                                                    <div>
+                                                                        <div className="text-red-600 font-medium">หมดอายุแล้ว</div>
+                                                                        <div className="mt-1 text-xs text-red-600">
+                                                                            {notification.expiredLots.map((lot, idx) => (
+                                                                                <span key={idx}>
+                                                                                    {lot.lotNumber} ({lot.quantity} ชิ้น)
+                                                                                    {idx < notification.expiredLots.length - 1 ? ', ' : ''}
+                                                                                </span>
+                                                                            ))}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
                                                             </p>
                                                         </div>
                                                         <button

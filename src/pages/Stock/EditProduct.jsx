@@ -10,7 +10,7 @@ import { ProductContext } from "../../context/ProductContext";
 const EditProduct = () => {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { setProducts } = useContext(ProductContext);
+  const { updateProduct } = useContext(ProductContext);
   const [formData, setFormData] = useState({
     productName: "",
     productDescription: "",
@@ -189,13 +189,22 @@ const EditProduct = () => {
     });
 
     try {
-      await productService.updateProduct(id, formDataToSend);
+      const response = await productService.updateProduct(id, formDataToSend);
       Swal.fire({ icon: 'success', title: 'อัปเดตสินค้าสำเร็จ!' });
       
-      // อัปเดต products context หลังจากแก้ไขสินค้าสำเร็จ
-      const allProductsResponse = await productService.getAllProducts();
-      const allProducts = allProductsResponse.data || allProductsResponse;
-      setProducts(allProducts);
+      // ✅ อัพเดทสินค้าใน ProductContext ทันที (ใช้ response.data แทน FormData)
+      if (response && response.data) {
+        updateProduct(id, response.data);
+      } else {
+        // ถ้าไม่มี response.data ให้ใช้ formData แปลงเป็น object
+        const updateData = {};
+        for (let [key, value] of formDataToSend.entries()) {
+          if (key !== 'productImage') { // ข้ามไฟล์รูป
+            updateData[key] = value;
+          }
+        }
+        updateProduct(id, updateData);
+      }
       
       navigate("/product");
     } catch (err) {

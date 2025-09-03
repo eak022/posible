@@ -9,7 +9,7 @@ import { ProductContext } from "../../context/ProductContext";
 
 const CreateProduct = () => {
   const navigate = useNavigate();
-  const { setProducts } = useContext(ProductContext);
+  const { addProduct } = useContext(ProductContext);
   const [formData, setFormData] = useState({
     productName: "",
     productDescription: "",
@@ -226,13 +226,12 @@ const CreateProduct = () => {
     }
 
     try {
-      const newProduct = await productService.createProduct(formDataToSend);
+      const response = await productService.createProduct(formDataToSend);
       Swal.fire({ icon: 'success', title: 'สร้างสินค้าสำเร็จ!' });
       
-      // อัปเดต products context หลังจากสร้างสินค้าสำเร็จ
-      const allProductsResponse = await productService.getAllProducts();
-      const allProducts = allProductsResponse.data || allProductsResponse;
-      setProducts(allProducts);
+      // ✅ เพิ่มสินค้าใหม่เข้า ProductContext ทันที
+      // Backend ส่ง response เป็น { message, product } ไม่ใช่ { data }
+      addProduct(response.product);
       
       setFormData({
         productName: "",
@@ -614,7 +613,7 @@ const CreateProduct = () => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    จำนวนล็อตแรก
+                    จำนวนล็อตแรก (ชิ้น)
                   </label>
                   <input
                     type="number"
@@ -628,7 +627,7 @@ const CreateProduct = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    ราคาซื้อต่อหน่วย
+                    ราคาซื้อต่อหน่วย (ชิ้น)
                   </label>
                   <input
                     type="number"

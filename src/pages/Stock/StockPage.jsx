@@ -1,10 +1,10 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useState, useEffect, useContext } from "react";
+import { useState, useEffect, useContext, useMemo } from "react";
 import CardProduct from "../../components/CardProduct";
 import FilterModal from "../../components/FilterModal";
 import useFilter from "../../hooks/useFilter";
 import { FaFilter, FaPlus } from "react-icons/fa";
-import { productService, categoryService } from "../../services";
+import { categoryService } from "../../services";
 import { ProductContext } from "../../context/ProductContext";
 
 // CardSkeleton component (ใช้ daisyUI skeleton)
@@ -22,57 +22,61 @@ const CardSkeleton = () => (
 const StockPage = () => {
   const { category } = useParams();
   const navigate = useNavigate();
-  const { products, setProducts } = useContext(ProductContext);
+  const { 
+    products, 
+    loading, 
+    categories, 
+    getProductsByCategory, 
+    fetchProducts,
+    fetchCategories 
+  } = useContext(ProductContext);
+  
   const [searchTerm, setSearchTerm] = useState("");
   const [priceRange, setPriceRange] = useState({ min: "", max: "" });
   const [stockRange, setStockRange] = useState({ min: "", max: "" });
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [categoryName, setCategoryName] = useState("");
 
+  // ใช้ useMemo เพื่อกรองสินค้าตามหมวดหมู่ (ไม่ต้องเรียก API ใหม่)
+  const filteredProductsByCategory = useMemo(() => {
+    return getProductsByCategory(category);
+  }, [products, category, getProductsByCategory]);
+
+  // ดึงชื่อหมวดหมู่จาก Context แทนการเรียก API
   useEffect(() => {
-    const fetchData = async () => {
+    if (category && categories.length > 0) {
+      const foundCategory = categories.find(cat => cat._id === category);
+      setCategoryName(foundCategory?.categoryName || "");
+    } else {
+      setCategoryName("");
+    }
+  }, [category, categories]);
+
+  // ตรวจสอบว่าต้องดึงข้อมูลใหม่หรือไม่
+  useEffect(() => {
+    const initializeData = async () => {
       try {
-        setLoading(true);
-        let response;
-
-        // ดึงข้อมูลหมวดหมู่
-        if (category) {
-          const categoryResponse = await categoryService.getCategoryById(
-            category
-          );
-          setCategoryName(categoryResponse.categoryName);
-        } else {
-          setCategoryName("");
+        // ถ้ายังไม่มีข้อมูลสินค้า ให้ดึงมา
+        if (products.length === 0) {
+          await fetchProducts();
         }
-
-        // ดึงข้อมูลสินค้าทั้งหมด
-        response = await productService.getAllProducts();
-        let products = response.data || response;
-
-        // กรองสินค้าตามหมวดหมู่
-        if (category) {
-          products = products.filter(
-            (product) => product.categoryId?._id === category
-          );
+        
+        // ถ้ายังไม่มีข้อมูลหมวดหมู่ ให้ดึงมา
+        if (categories.length === 0) {
+          await fetchCategories();
         }
-
-        setProducts(products);
       } catch (err) {
         setError(err.message);
-        console.error("Error fetching data:", err);
-        setProducts([]);
-      } finally {
-        setLoading(false);
+        console.error("Error initializing data:", err);
       }
     };
 
-    fetchData();
-  }, [category, setProducts]);
+    initializeData();
+  }, [products.length, categories.length, fetchProducts, fetchCategories]);
 
   const filteredProducts = useFilter(
-    products,
+    filteredProductsByCategory, // ใช้ข้อมูลที่กรองแล้วแทน
     categoryName,
     searchTerm,
     priceRange,

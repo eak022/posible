@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import purchaseOrderService from '../../services/purchaseOrder.service';
 import supplierService from '../../services/supplier.service';
+import productService from '../../services/product.service';
 import { FaArrowLeft, FaTruck, FaCheckDouble } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
@@ -8,9 +9,11 @@ import PurchaseOrderList from '../../components/PurchaseOrder/PurchaseOrderList'
 import PurchaseOrderDetail from '../../components/PurchaseOrder/PurchaseOrderDetail';
 import ReceiptDetail from '../../components/PurchaseOrder/ReceiptDetail';
 import { usePurchaseOrder } from "../../context/PurchaseOrderContext";
+import { ProductContext } from "../../context/ProductContext";
 
 const ReceiveStockPage = () => {
     const { purchaseOrders, setPurchaseOrders } = usePurchaseOrder();
+    const { updateProduct } = useContext(ProductContext);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedOrderId, setSelectedOrderId] = useState(null);
@@ -262,22 +265,101 @@ const ReceiveStockPage = () => {
             if (formValues) {
                 console.log('Sending update data:', formValues);
                 
+                let updatedOrder;
                 if (isCompleted) {
                     // ถ้าเป็นใบสั่งซื้อที่เสร็จแล้ว ให้ลบล็อตเดิมและสร้างใหม่
-                    await purchaseOrderService.updatePurchaseOrderAndRecreateLots(id, formValues);
+                    updatedOrder = await purchaseOrderService.updatePurchaseOrderAndRecreateLots(id, formValues);
                     await Swal.fire('สำเร็จ', 'แก้ไขข้อมูลการรับสินค้าเรียบร้อยแล้ว', 'success');
                 } else {
                     // ถ้าเป็นใบสั่งซื้อใหม่ ให้อัพเดตและรับสินค้า
-                    await purchaseOrderService.updatePurchaseOrder(id, formValues);
-                    await purchaseOrderService.receiveStock(id);
-                    await Swal.fire('สำเร็จ', 'อัพเดตข้อมูลการส่งมอบและรับสินค้าเรียบร้อยแล้ว', 'success');
+                    let stockResponse = null;
+                    let updateSuccess = false;
+                    
+                    try {
+                        // ✅ อัพเดตข้อมูลการส่งมอบ
+                        updatedOrder = await purchaseOrderService.updatePurchaseOrder(id, formValues);
+                        updateSuccess = true;
+                        console.log('Update purchase order successful');
+                    } catch (updateError) {
+                        console.error('Error updating purchase order:', updateError);
+                        await Swal.fire('ข้อผิดพลาด', 'ไม่สามารถอัพเดทข้อมูลการส่งมอบได้: ' + (updateError.response?.data?.message || updateError.message), 'error');
+                        return; // หยุดการทำงานต่อ
+                    }
+                    
+                    try {
+                        // ✅ รับสินค้า
+                        stockResponse = await purchaseOrderService.receiveStock(id);
+                        
+                        // ✅ ตรวจสอบว่า stockResponse มี error หรือไม่
+                        if (stockResponse && !stockResponse.error) {
+                            await Swal.fire('สำเร็จ', 'อัพเดตข้อมูลการส่งมอบและรับสินค้าเรียบร้อยแล้ว', 'success');
+                        } else {
+                            // ถ้ามี error ให้แสดง error message
+                            await Swal.fire('ข้อผิดพลาด', stockResponse?.message || 'ไม่สามารถรับสินค้าได้', 'error');
+                            return; // หยุดการทำงานต่อ
+                        }
+                    } catch (stockError) {
+                        console.error('Error in stock receiving process:', stockError);
+                        await Swal.fire('ข้อผิดพลาด', 'ไม่สามารถรับสินค้าได้: ' + (stockError.response?.data?.message || stockError.message), 'error');
+                        return; // หยุดการทำงานต่อ
+                    }
+                    
+                    // ✅ อัพเดท ProductContext เมื่อรับสต็อกสำเร็จ
+                    if (stockResponse && stockResponse.addedProducts) {
+                        console.log('Stock received, updating ProductContext:', stockResponse.addedProducts);
+                        
+                        // ✅ ดึงข้อมูลสินค้าล่าสุดจาก API และอัพเดท ProductContext
+                        for (const addedProduct of stockResponse.addedProducts) {
+                            try {
+                                // หา productId จากชื่อสินค้า
+                                const product = purchaseOrders.find(po => 
+                                    po.products.some(p => p.productName === addedProduct.productName)
+                                );
+                                
+                                if (product) {
+                                    const productItem = product.products.find(p => p.productName === addedProduct.productName);
+                                    if (productItem) {
+                                        const productId = productItem.productId._id || productItem.productId;
+                                        
+                                        // ✅ ดึงข้อมูลสินค้าล่าสุดจาก API
+                                        const latestProduct = await productService.getProductById(productId);
+                                        
+                                        // ✅ อัพเดท ProductContext ด้วยข้อมูลล่าสุด
+                                        updateProduct(productId, {
+                                            quantity: latestProduct.totalQuantity || latestProduct.quantity,
+                                            totalQuantity: latestProduct.totalQuantity || latestProduct.quantity,
+                                            lots: latestProduct.lots
+                                        });
+                                        
+                                        console.log(`Updated product ${addedProduct.productName} to ${latestProduct.totalQuantity || latestProduct.quantity}`);
+                                    }
+                                }
+                            } catch (error) {
+                                console.error(`Error updating product ${addedProduct.productName}:`, error);
+                            }
+                        }
+                    }
                 }
                 
-                fetchPurchaseOrders();
+                // ✅ อัพเดท PurchaseOrderContext แทนการเรียก fetchPurchaseOrders
+                if (updatedOrder) {
+                    // อัพเดท purchaseOrders ใน state โดยตรง
+                    setPurchaseOrders(prevOrders => 
+                        prevOrders.map(order => 
+                            order._id === id ? { ...order, ...updatedOrder } : order
+                        )
+                    );
+                } else {
+                    fetchPurchaseOrders();
+                }
             }
         } catch (error) {
             console.error('Error updating delivery info:', error);
-            Swal.fire('ข้อผิดพลาด', 'ไม่สามารถอัพเดทข้อมูลการส่งมอบได้', 'error');
+            // ✅ ตรวจสอบว่า error นี้ไม่ได้มาจาก update หรือ stock receiving process
+            if (!error.message?.includes('stock receiving process') && 
+                !error.message?.includes('updating purchase order')) {
+                Swal.fire('ข้อผิดพลาด', 'ไม่สามารถอัพเดทข้อมูลการส่งมอบได้', 'error');
+            }
         }
     };
 

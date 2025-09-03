@@ -67,13 +67,27 @@ const CardProduct = ({ product }) => {
         <p className="text-purple-500 text-sm font-bold">
           ฿ {product.sellingPricePerUnit}
         </p>
-        <p className="text-gray-700 text-xs">มีอยู่ {product.totalQuantity || product.quantity}</p>
+        <p className="text-gray-700 text-xs">มีอยู่ {(() => {
+          // ✅ คำนวณจำนวนที่ขายได้ (เฉพาะล็อตที่ยังไม่หมดอายุ)
+          if (product.lots && Array.isArray(product.lots)) {
+            const currentDate = new Date();
+            const sellableQuantity = product.lots
+              .filter(lot => 
+                lot.status === 'active' && 
+                lot.quantity > 0 && 
+                (!lot.expirationDate || new Date(lot.expirationDate) > currentDate)
+              )
+              .reduce((total, lot) => total + lot.quantity, 0);
+            return sellableQuantity;
+          }
+          return product.totalQuantity || product.quantity;
+        })()}</p>
         {/* Minimal Badges: แสดงทุกสถานะในบรรทัดเดียวกัน */}
-        {product.productStatuses && product.productStatuses.length > 0 && (
+        {product.productStatuses && Array.isArray(product.productStatuses) && product.productStatuses.length > 0 && (
           <div className="flex flex-row flex-nowrap justify-center items-center gap-1 mt-1 mb-1 overflow-x-auto max-w-full">
             {product.productStatuses
               .filter((status, idx, arr) =>
-                ['สินค้าใกล้หมด', 'สินค้าใกล้หมดอายุ', 'สินค้าหมด', 'หมดอายุ'].includes(status.statusName) &&
+                ['สินค้าใกล้หมด', 'สินค้าใกล้หมดอายุ', 'สินค้าหมด'].includes(status.statusName) &&
                 arr.findIndex(s => s.statusName === status.statusName) === idx
               )
               .map((status, index) => {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext, useMemo } from "react";
 import { orderService } from "../../services";
 import { generateOrderNumber } from "../../utils/orderUtils";
 import Swal from "sweetalert2";
@@ -9,10 +9,22 @@ import { AiOutlineCalendar, AiOutlineCheck, AiOutlineDollar, AiOutlineClose, AiO
 import { FiCreditCard } from "react-icons/fi";
 import { FaMoneyBillWave, FaBox } from "react-icons/fa";
 import { productService } from "../../services";
+import { OrderContext } from "../../context/OrderContext";
+import { ProductContext } from "../../context/ProductContext";
 
 const OrderHistory = () => {
-  const [orders, setOrders] = useState([]);
-  const [filteredOrders, setFilteredOrders] = useState([]);
+  const { 
+    orders, 
+    loading, 
+    statusOptions, 
+    paymentOptions, 
+    filterOrders, 
+    updateOrder,
+    fetchOrders 
+  } = useContext(OrderContext);
+  
+  const { updateProduct } = useContext(ProductContext);
+  
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [editingProduct, setEditingProduct] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -20,78 +32,29 @@ const OrderHistory = () => {
   const [paymentFilter, setPaymentFilter] = useState("ทั้งหมด");
   const [dateRange, setDateRange] = useState([null, null]);
   const [startDate, endDate] = dateRange;
-  const [statusOptions, setStatusOptions] = useState([]);
-  const [paymentOptions, setPaymentOptions] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [editingStatus, setEditingStatus] = useState(false);
   const [newStatus, setNewStatus] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const ORDERS_PER_PAGE = 10;
+
+  // ใช้ useMemo เพื่อกรองข้อมูลใน memory
+  const filteredOrders = useMemo(() => {
+    return filterOrders({
+      status: statusFilter,
+      payment: paymentFilter,
+      startDate,
+      endDate,
+      searchTerm
+    });
+  }, [orders, statusFilter, paymentFilter, startDate, endDate, searchTerm, filterOrders]);
+
   const totalPages = Math.ceil(filteredOrders.length / ORDERS_PER_PAGE);
   const paginatedOrders = filteredOrders.slice((currentPage - 1) * ORDERS_PER_PAGE, currentPage * ORDERS_PER_PAGE);
 
+  // Reset page เมื่อ filter เปลี่ยน
   useEffect(() => {
-    fetchOrders();
-  }, [statusFilter, dateRange]);
-
-  useEffect(() => {
-    // กรองข้อมูลตามเงื่อนไขต่างๆ
-    let result = orders;
-
-    // กรองตามสถานะ
-    if (statusFilter !== "ทั้งหมด") {
-      result = result.filter(order => order.orderStatus === statusFilter);
-    }
-
-    // กรองตามวันที่
-    if (startDate && endDate) {
-      result = result.filter(order => {
-        const orderDate = new Date(order.orderDate);
-        return orderDate >= startDate && orderDate <= endDate;
-      });
-    }
-
-    // กรองตามวิธีการชำระเงิน
-    if (paymentFilter !== "ทั้งหมด") {
-      result = result.filter(order => order.paymentMethod === paymentFilter);
-    }
-
-    // กรองตามคำค้นหา
-    if (searchTerm) {
-      result = result.filter(order => 
-        generateOrderNumber(order._id).toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    setFilteredOrders(result);
-    setCurrentPage(1); // reset page เมื่อ filter เปลี่ยน
-  }, [orders, statusFilter, dateRange, paymentFilter, searchTerm]);
-
-  const fetchOrders = async () => {
-    try {
-      setLoading(true);
-      const response = await orderService.getOrders();
-      
-      // ดึงสถานะและวิธีการชำระเงินที่ไม่ซ้ำกัน
-      const uniqueStatuses = [...new Set(response.map(order => order.orderStatus))];
-      const uniquePayments = [...new Set(response.map(order => order.paymentMethod))];
-      
-      setStatusOptions(uniqueStatuses);
-      setPaymentOptions(uniquePayments);
-      setOrders(response);
-    } catch (error) {
-      console.error("Error fetching orders:", error);
-      Swal.fire({
-        icon: "error",
-        title: "เกิดข้อผิดพลาด",
-        text: "ไม่สามารถดึงข้อมูลคำสั่งซื้อได้",
-        confirmButtonText: "ตกลง",
-      });
-      setOrders([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+    setCurrentPage(1);
+  }, [statusFilter, dateRange, paymentFilter, searchTerm]);
   
   // ฟังก์ชันกดคลิกสินค้า
   const handleOrderClick = (order) => {
@@ -179,31 +142,52 @@ const OrderHistory = () => {
       });
 
       if (response) {
-        // อัปเดตข้อมูลในหน้าจอ
-        const updatedOrders = orders.map((order) => {
-          if (order._id === selectedOrder._id) {
-            return {
-              ...order,
-              products: order.products.map((product) => {
-                if (product.productId === productId) {
-                  return { 
-                    ...product, 
-                    quantity: updates.quantity,
-                    sellingPricePerUnit: updates.sellingPricePerUnit,
-                    lotsUsed: response.order.products.find(p => p.productId === productId)?.lotsUsed || product.lotsUsed
-                  };
-                }
-                return product;
-              }),
-              total: response.order.total,
-              subtotal: response.order.subtotal
-            };
-          }
-          return order;
+        // อัปเดตข้อมูลใน Context
+        updateOrder(selectedOrder._id, {
+          products: selectedOrder.products.map((product) => {
+            if (product.productId === productId) {
+              return { 
+                ...product, 
+                quantity: updates.quantity,
+                sellingPricePerUnit: updates.sellingPricePerUnit,
+                lotsUsed: response.order.products.find(p => p.productId === productId)?.lotsUsed || product.lotsUsed
+              };
+            }
+            return product;
+          }),
+          total: response.order.total,
+          subtotal: response.order.subtotal
         });
-        setOrders(updatedOrders);
-        setSelectedOrder(updatedOrders.find((order) => order._id === selectedOrder._id));
+        
+        // อัปเดต selectedOrder
+        setSelectedOrder(prev => ({
+          ...prev,
+          products: prev.products.map((product) => {
+            if (product.productId === productId) {
+              return { 
+                ...product, 
+                quantity: updates.quantity,
+                sellingPricePerUnit: updates.sellingPricePerUnit,
+                lotsUsed: response.order.products.find(p => p.productId === productId)?.lotsUsed || product.lotsUsed
+              };
+            }
+            return product;
+          }),
+          total: response.order.total,
+          subtotal: response.order.subtotal
+        }));
         setEditingProduct(null);
+
+        // ✅ อัพเดทสต็อกสินค้าใน ProductContext ทันที
+        if (response.quantityDiff !== 0) {
+          const stockChange = -response.quantityDiff; // ลบเพราะ quantityDiff เป็นจำนวนที่เพิ่มในออร์เดอร์
+          updateProduct(productId, {
+            quantity: (prevProduct) => {
+              const currentStock = prevProduct.quantity || 0;
+              return Math.max(0, currentStock + stockChange);
+            }
+          });
+        }
 
         // แสดงข้อความแจ้งเตือนสำเร็จพร้อมรายละเอียด
         let successMessage = "อัพเดทรายละเอียดสินค้าเรียบร้อยแล้ว";
@@ -266,15 +250,9 @@ const OrderHistory = () => {
         const response = await orderService.updateOrderStatus(selectedOrder._id, newStatus);
         
         if (response) {
-          // อัปเดตข้อมูลในหน้าจอ
-          const updatedOrders = orders.map((order) => {
-            if (order._id === selectedOrder._id) {
-              return { ...order, orderStatus: newStatus };
-            }
-            return order;
-          });
-          setOrders(updatedOrders);
-          setSelectedOrder(updatedOrders.find((order) => order._id === selectedOrder._id));
+          // อัปเดตข้อมูลใน Context
+          updateOrder(selectedOrder._id, { orderStatus: newStatus });
+          setSelectedOrder(prev => ({ ...prev, orderStatus: newStatus }));
 
           Swal.fire({
             icon: "success",

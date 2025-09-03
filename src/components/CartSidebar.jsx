@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useContext } from "react";
 import { FaTrashAlt, FaBarcode, FaTags, FaPercent } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { cartService, orderService, productService, promotionService } from "../services/";
@@ -6,6 +6,8 @@ import { generateOrderNumber } from "../utils/orderUtils";
 import Swal from "sweetalert2";
 import BarcodeScanner from "./BarcodeScanner";
 import PaymentPage from "./PaymentPage";
+import { OrderContext } from "../context/OrderContext";
+import { ProductContext } from "../context/ProductContext";
 
 const CartSidebar = ({
   isCartOpen,
@@ -16,6 +18,8 @@ const CartSidebar = ({
   user,
   refetchData,
 }) => {
+  const { addOrder } = useContext(OrderContext);
+  const { updateProduct } = useContext(ProductContext);
   const [isScanning, setIsScanning] = useState(false);
   const [showPaymentMethods, setShowPaymentMethods] = useState(false);
   // ใช้สถานะโปรจากแต่ละแถวใน cart โดยตรง (item.promotionId)
@@ -353,6 +357,27 @@ const CartSidebar = ({
 
       const response = await orderService.createOrder(orderData);
       const newOrderNumber = generateOrderNumber(response.order._id);
+
+      // ✅ เพิ่มออร์เดอร์ใหม่เข้า OrderContext ทันที
+      addOrder(response.order);
+
+      // ✅ อัพเดทสต็อกสินค้าใน ProductContext ทันที
+      if (response.order.products) {
+        response.order.products.forEach(orderProduct => {
+          // คำนวณจำนวนที่ขายออกไป
+          const soldQuantity = orderProduct.pack ? 
+            orderProduct.quantity * (orderProduct.packSize || 1) : 
+            orderProduct.quantity;
+          
+          // อัพเดทสต็อกใน ProductContext
+          updateProduct(orderProduct.productId, {
+            quantity: (prevProduct) => {
+              const currentStock = prevProduct.quantity || 0;
+              return Math.max(0, currentStock - soldQuantity);
+            }
+          });
+        });
+      }
 
       Swal.fire({
         icon: "success",
@@ -709,13 +734,36 @@ const CartSidebar = ({
           setShowPaymentMethods(false);
         }}
         cartItems={cartItems}
-        onSubmit={(paymentMethod, cashReceived, paymentData) => {
+        onSubmit={async (paymentMethod, cashReceived, paymentData) => {
           // ✅ จัดการการเคลียร์ตะกร้าหลังจาก QR payment สำเร็จเท่านั้น
           if (paymentMethod === 'banktransfer' && paymentData) {
             // ถ้าเป็น banktransfer (QR payment สำเร็จ) ให้เคลียร์ตะกร้าและปิดหน้า
             setCartItems([]); // เคลียร์ตะกร้า
             setIsCartOpen(false); // ปิดตะกร้า
             refetchData(); // รีเฟรชข้อมูล
+            
+            // ✅ เพิ่มออร์เดอร์ใหม่เข้า OrderContext ทันที
+            if (paymentData.order) {
+              addOrder(paymentData.order);
+              
+              // ✅ อัพเดทสต็อกสินค้าใน ProductContext ทันที
+              if (paymentData.order.products) {
+                paymentData.order.products.forEach(orderProduct => {
+                  // คำนวณจำนวนที่ขายออกไป
+                  const soldQuantity = orderProduct.pack ? 
+                    orderProduct.quantity * (orderProduct.packSize || 1) : 
+                    orderProduct.quantity;
+                  
+                  // อัพเดทสต็อกใน ProductContext
+                  updateProduct(orderProduct.productId, {
+                    quantity: (prevProduct) => {
+                      const currentStock = prevProduct.quantity || 0;
+                      return Math.max(0, currentStock - soldQuantity);
+                    }
+                  });
+                });
+              }
+            }
           } else if (paymentMethod === 'Cash') {
             // ถ้าเป็นเงินสด ให้ส่งต่อไปยัง handleCreateOrder ปกติ
             handleCreateOrder(paymentMethod, cashReceived);

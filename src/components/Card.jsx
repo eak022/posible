@@ -57,7 +57,21 @@ const Card = ({ product, handleAddToCart, promotionMap }) => {
 
         {/* สถานะสินค้า */}
         <p className="text-gray-700 text-xs mt-1">
-          มีอยู่ {product.totalQuantity || product.quantity || 0} {product.totalQuantity || product.quantity > 0 ? 'ชิ้น' : 'ชิ้น'}
+          มีอยู่ {(() => {
+            // ✅ คำนวณจำนวนที่ขายได้ (เฉพาะล็อตที่ยังไม่หมดอายุ)
+            if (product.lots && Array.isArray(product.lots)) {
+              const currentDate = new Date();
+              const sellableQuantity = product.lots
+                .filter(lot => 
+                  lot.status === 'active' && 
+                  lot.quantity > 0 && 
+                  (!lot.expirationDate || new Date(lot.expirationDate) > currentDate)
+                )
+                .reduce((total, lot) => total + lot.quantity, 0);
+              return sellableQuantity;
+            }
+            return product.totalQuantity || product.quantity || 0;
+          })()} ชิ้น
         </p>
 
         {/* ไม่แสดงสถานะโปรโมชั่น */}

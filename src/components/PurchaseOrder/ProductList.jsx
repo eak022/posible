@@ -33,14 +33,29 @@ const ProductList = ({ products, onAdd }) => {
         if (priceRange.max !== '' && !isNaN(Number(priceRange.max))) {
             filteredProducts = filteredProducts.filter(product => product.sellingPricePerUnit <= Number(priceRange.max));
         }
+        // ✅ ฟังก์ชันคำนวณจำนวนที่ขายได้ (เฉพาะล็อตที่ยังไม่หมดอายุ)
+        const getSellableQuantity = (product) => {
+            if (product.lots && Array.isArray(product.lots)) {
+                const currentDate = new Date();
+                return product.lots
+                    .filter(lot => 
+                        lot.status === 'active' && 
+                        lot.quantity > 0 && 
+                        (!lot.expirationDate || new Date(lot.expirationDate) > currentDate)
+                    )
+                    .reduce((total, lot) => total + lot.quantity, 0);
+            }
+            return product.totalQuantity || product.quantity || 0;
+        };
+
         // กรองด้วย stockRange
         if (stockRange.min !== '' && !isNaN(Number(stockRange.min))) {
-            filteredProducts = filteredProducts.filter(product => (product.totalQuantity || product.quantity || 0) >= Number(stockRange.min));
+            filteredProducts = filteredProducts.filter(product => getSellableQuantity(product) >= Number(stockRange.min));
         }
         if (stockRange.max !== '' && !isNaN(Number(stockRange.max))) {
-            filteredProducts = filteredProducts.filter(product => (product.totalQuantity || product.quantity || 0) <= Number(stockRange.max));
+            filteredProducts = filteredProducts.filter(product => getSellableQuantity(product) <= Number(stockRange.max));
         }
-        return filteredProducts.sort((a, b) => (a.totalQuantity || a.quantity || 0) - (b.totalQuantity || b.quantity || 0));
+        return filteredProducts.sort((a, b) => getSellableQuantity(a) - getSellableQuantity(b));
     }, [products, searchTerm, priceRange, stockRange]);
 
     return (
@@ -81,7 +96,21 @@ const ProductList = ({ products, onAdd }) => {
                         <div className="text-gray-800 flex items-center justify-center">
                             {product.productName}
                         </div>
-                        <div className={`${isLowStock ? 'text-red-500 font-medium' : 'text-gray-600'} flex items-center justify-center`}>{product.totalQuantity || product.quantity || 0}
+                        <div className={`${isLowStock ? 'text-red-500 font-medium' : 'text-gray-600'} flex items-center justify-center`}>{(() => {
+                            // ✅ คำนวณจำนวนที่ขายได้ (เฉพาะล็อตที่ยังไม่หมดอายุ)
+                            if (product.lots && Array.isArray(product.lots)) {
+                                const currentDate = new Date();
+                                const sellableQuantity = product.lots
+                                    .filter(lot => 
+                                        lot.status === 'active' && 
+                                        lot.quantity > 0 && 
+                                        (!lot.expirationDate || new Date(lot.expirationDate) > currentDate)
+                                    )
+                                    .reduce((total, lot) => total + lot.quantity, 0);
+                                return sellableQuantity;
+                            }
+                            return product.totalQuantity || product.quantity || 0;
+                        })()}
                         {product.packSize ? (
                                 <span className="ml-2 text-xs text-gray-500">({product.packSize}ชิ้น/แพ็ค)</span>
                             ) : null}

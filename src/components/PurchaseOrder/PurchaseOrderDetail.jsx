@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useContext } from "react";
 import purchaseOrderService from "../../services/purchaseOrder.service";
 import supplierService from "../../services/supplier.service";
 import { IoMdClose } from "react-icons/io";
@@ -6,8 +6,10 @@ import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 import PropTypes from 'prop-types';
 import useAuthStore from '../../store/useAuthStore';
+import { ProductContext } from '../../context/ProductContext';
 
 const PurchaseOrderDetail = ({ id, onClose, isReceivePage = false }) => {
+  const { updateProduct } = useContext(ProductContext);
   const [purchaseOrder, setPurchaseOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [supplier, setSupplier] = useState(null);
@@ -80,6 +82,22 @@ const PurchaseOrderDetail = ({ id, onClose, isReceivePage = false }) => {
       // อัปเดตข้อมูลใบสั่งของ
       const updatedOrder = await purchaseOrderService.getPurchaseOrderById(id);
       setPurchaseOrder(updatedOrder);
+      
+      // ✅ อัพเดท ProductContext เมื่อรับสต็อกสำเร็จ
+      if (response && response.addedProducts) {
+        console.log('Stock received, updating ProductContext:', response.addedProducts);
+        response.addedProducts.forEach(addedProduct => {
+          // หา productId จากชื่อสินค้า
+          const productItem = purchaseOrder.products.find(p => p.productName === addedProduct.productName);
+          if (productItem) {
+            updateProduct(productItem.productId, {
+              quantity: addedProduct.newTotal,
+              totalQuantity: addedProduct.newTotal
+            });
+            console.log(`Updated product ${addedProduct.productName} to ${addedProduct.newTotal}`);
+          }
+        });
+      }
       
       setStockResult({
         message: response.message,
