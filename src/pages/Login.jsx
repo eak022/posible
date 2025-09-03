@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import useAuthStore from "../store/useAuthStore";
 import { FaUser, FaLock, FaArrowRight } from "react-icons/fa";
@@ -6,11 +6,19 @@ import Swal from "sweetalert2";
 
 const Login = () => {
   const navigate = useNavigate();
-  const { login, isLoading, error } = useAuthStore();
+  const { login, isLoading, error, isAuthenticated } = useAuthStore();
   const [formData, setFormData] = useState({
     username: "",
     password: "",
   });
+
+  // ตรวจสอบว่าผู้ใช้ล็อกอินแล้วหรือไม่
+  useEffect(() => {
+    if (isAuthenticated) {
+      console.log("User already authenticated, redirecting to dashboard");
+      navigate("/dashboard", { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleChange = (e) => {
     setFormData({
@@ -22,9 +30,20 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await login(formData);
-      if (!error) {
-        navigate("/");
+      const result = await login(formData);
+      console.log("Login result:", result);
+      
+      // ตรวจสอบว่า login สำเร็จหรือไม่
+      if (result && result.user) {
+        console.log("Login successful, navigating to dashboard");
+        navigate("/dashboard");
+      } else {
+        console.log("Login failed - no user data returned");
+        Swal.fire({
+          icon: "error",
+          title: "เข้าสู่ระบบไม่สำเร็จ",
+          text: "ไม่สามารถเข้าสู่ระบบได้ กรุณาลองใหม่อีกครั้ง",
+        });
       }
     } catch (error) {
       console.error("Login failed:", error);

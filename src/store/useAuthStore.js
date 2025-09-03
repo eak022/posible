@@ -34,25 +34,33 @@ const useAuthStore = create(
     login: async (credentials) => {
         set({ isLoading: true, error: null });
         try {
+            console.log("🔐 เริ่มกระบวนการ login...");
             const response = await api.post('/auth/login', credentials);
+            console.log("📡 Login response:", response.data);
             
             // ตรวจสอบว่ามี user data หรือไม่
             if (response.data.user) {
+                console.log("✅ พบข้อมูลผู้ใช้ - ตั้งค่า state");
                 set({
                     user: response.data.user,
                     isAuthenticated: true,
-                    isLoading: false
+                    isLoading: false,
+                    error: null
                 });
+                return response.data;
             } else {
+                console.log("⚠️ ไม่พบข้อมูลผู้ใช้ - เรียก checkAuth");
                 // ถ้าไม่มี user data ให้เรียก check-auth เพื่อดึงข้อมูล
-                await get().checkAuth();
+                const authResult = await get().checkAuth();
+                return authResult;
             }
-            
-            return response.data;
         } catch (error) {
+            console.error("❌ Login error:", error);
             set({
                 error: error.response?.data?.message || 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ',
-                isLoading: false
+                isLoading: false,
+                isAuthenticated: false,
+                user: null
             });
             throw error;
         }
@@ -221,6 +229,15 @@ const useAuthStore = create(
                 user: state.user, 
                 isAuthenticated: state.isAuthenticated 
             }), // เฉพาะ user และ isAuthenticated ที่จะ persist
+            onRehydrateStorage: () => (state) => {
+                console.log('🔄 Rehydrating auth state:', state);
+                // ตรวจสอบว่า state ที่ rehydrate มาถูกต้องหรือไม่
+                if (state && state.isAuthenticated && !state.user) {
+                    console.log('⚠️ Inconsistent state detected - clearing auth');
+                    state.isAuthenticated = false;
+                    state.user = null;
+                }
+            },
         }
     )
 );

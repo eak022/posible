@@ -11,6 +11,7 @@ import { StatusProvider } from "./context/StatusContext";
 import { PurchaseOrderProvider } from "./context/PurchaseOrderContext";
 import { PromotionProvider } from "./context/PromotionContext";
 import { OrderProvider } from "./context/OrderContext";
+import "./utils/authDebug"; // เพิ่ม debug helper
 
 Modal.setAppElement("#root"); // เพิ่มบรรทัดนี้
 

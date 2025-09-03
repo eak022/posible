@@ -22,10 +22,23 @@ const ProtectedRoute = ({ children }) => {
           cookies: "HttpOnly (ไม่สามารถอ่านได้จาก JavaScript)"
         });
         
-        // เนื่องจาก backend ใช้ HttpOnly cookies เราจะไม่สามารถตรวจสอบได้จาก JavaScript
-        // ดังนั้นให้เรียก checkAuth() เสมอเพื่อให้ backend ตรวจสอบ cookies
-        
-        await checkAuth();
+        // ตรวจสอบว่ามี persisted state หรือไม่
+        const persistedAuth = localStorage.getItem('auth-storage');
+        if (persistedAuth) {
+          const parsedAuth = JSON.parse(persistedAuth);
+          console.log("📦 Persisted auth state:", parsedAuth);
+          
+          // ถ้ามี persisted state และ isAuthenticated เป็น true ให้เรียก checkAuth
+          if (parsedAuth.state?.isAuthenticated) {
+            await checkAuth();
+          } else {
+            // ถ้าไม่มี persisted state หรือ isAuthenticated เป็น false ให้ล้าง tokens
+            clearAllTokens();
+          }
+        } else {
+          // ถ้าไม่มี persisted state เลย ให้ล้าง tokens
+          clearAllTokens();
+        }
         
         console.log("✅ การตรวจสอบ Authentication เสร็จสิ้น");
         console.log("📊 สถานะหลังตรวจสอบ:", { isAuthenticated, isLoading });
@@ -38,8 +51,11 @@ const ProtectedRoute = ({ children }) => {
       }
     };
 
-    verifyAuth();
-  }, [checkAuth, clearAllTokens]);
+    // เรียก verifyAuth เฉพาะเมื่อ component mount ครั้งแรก
+    if (isChecking) {
+      verifyAuth();
+    }
+  }, []); // ลบ dependencies เพื่อป้องกัน infinite loop
 
   // ถ้ากำลังโหลด หรือกำลังตรวจสอบ auth ให้แสดง loading
   if (isLoading || isChecking) {
