@@ -15,8 +15,8 @@ const Login = () => {
   // ตรวจสอบว่าผู้ใช้ล็อกอินแล้วหรือไม่
   useEffect(() => {
     if (isAuthenticated) {
-      console.log("User already authenticated, redirecting to dashboard");
-      navigate("/dashboard", { replace: true });
+      console.log("User already authenticated, redirecting to order page");
+      navigate("/", { replace: true });
     }
   }, [isAuthenticated, navigate]);
 
@@ -35,8 +35,8 @@ const Login = () => {
       
       // ตรวจสอบว่า login สำเร็จหรือไม่
       if (result && result.user) {
-        console.log("Login successful, navigating to dashboard");
-        navigate("/dashboard");
+        console.log("Login successful, navigating to order page");
+        navigate("/");
       } else {
         console.log("Login failed - no user data returned");
         Swal.fire({
